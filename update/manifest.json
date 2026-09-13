@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "product": "CasualTool",
-  "version": "3.5.42",
-  "packagePath": "versions/3.5.42/",
+  "version": "3.5.43",
+  "packagePath": "versions/3.5.43/",
   "script": {
     "file": "CasualAT.lua",
-    "bytes": 1509190,
-    "sha256": "9cc7211a092e227d0a3c0ab95ace19d19fe6eea19b03116aa786e61d6879ed80"
+    "bytes": 1509291,
+    "sha256": "6caf3a86707fd230a0fc2a6daec8c02b30bdf8bb1b90ab847a148571ec00d859"
   },
   "assets": {
     "id": "7620da8853b2d6c16d70f583fe01e5c82b2126756aba96c525de9196665f2583",
