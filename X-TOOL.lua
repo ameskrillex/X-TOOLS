@@ -5090,7 +5090,8 @@ local path=integration.storage:path('settings','adminzone.ini')
 local cfg=integration.storage:loadIni({main={automatic=false}},path)
 local sessionPath=integration.storage:path('cache','adminzone-session.ini')
 local session=integration.storage:loadIni({main={identity='',boot=0}},sessionPath)
-local inside,prompt,latched,pickup=false,false,false,nil
+local inside,latched,pickup=false,false,nil
+local spawnReadyAt
 local checked,pending,nextPickup=false,nil,0
 local exitLabel
 local function pickupPoint()
@@ -5124,9 +5125,9 @@ local function clearPickup()
     end
 end
 local function reset()
-    clearPickup();inside=false;prompt=false;latched=false;pending=nil
+    clearPickup();inside=false;latched=false;pending=nil
 end
-local function move(entering)
+local function move(entering,automatic)
     if pending then return false end
     if not ready() then
         integration.message('AdminZone: нужны права 3 уровня, выход из транспорта и слежки.')
@@ -5138,73 +5139,70 @@ local function move(entering)
     local x,y,z=entering and -773.6 or 2737.8,entering and 498.1 or -1760.2,entering and 1376.6 or 44.1
     setCharCoordinates(PLAYER_PED,x,y,z)
     clearPickup();nextPickup=0
-    inside=entering;prompt=false;latched=not entering
-    pending={x=x,y=y,z=z,at=getGameTimer(),lastReply=nil,interiorChanged=false}
+    inside=entering;latched=not entering
+    pending={x=x,y=y,z=z,at=getGameTimer(),lastReply=nil,command=command,settle=automatic and 1000 or 600}
     return true
 end
 integration.enter=function() return move(true) end
-integration.answer=function(yes)
-    if not prompt then return false end
-    prompt=false;latched=true
-    if yes then
-        local x,y,z=pickupPoint()
-        if not ready() or not near(x,y,z,2.5) then return false end
-        return move(not inside)
-    end
-    return true
-end
 integration.homeGet=function() return cfg.main.automatic==true end
 integration.homeSet=function(_,value)
     cfg.main.automatic=value==true;integration.storage:saveIni(cfg,path)
 end
 local events=require('samp.events')
-events.onSendCommand=function()
-    -- A later command supersedes the short interior transition.
-    pending=nil
+events.onSendCommand=function(command)
+    if not pending or command==pending.command then return end
+    local name=tostring(command):match('^/?([%w_]+)')
+    -- Login helpers and automatic commands do not cancel this transition.
+    if ({inter=true,setint=true,setvw=true,sp=true,gotomark=true,['goto']=true,tpm=true})[name] then pending=nil end
 end
 local function serverTransition()
-    if pending then pending.interiorChanged=true;pending.lastReply=getGameTimer() end
+    if pending then pending.lastReply=getGameTimer() end
 end
 events.onSetInterior=serverTransition
 events.onSetPlayerPos=serverTransition
 events.onSetPlayerPosFindZ=serverTransition
 integration.onDisconnect=function()
-    reset();checked=false
+    reset();checked=false;spawnReadyAt=nil
     session.main.identity='';integration.storage:saveIni(session,sessionPath)
 end
 integration.stop=reset
 integration.suspend=reset
 integration.onAccessChanged=function() if not integration.access:can(3) then reset() end end
 integration.update=function()
-    if sampGetGamestate()~=3 or not sampIsLocalPlayerSpawned() or not doesCharExist(PLAYER_PED) then
-        reset();return
+    if sampGetGamestate()~=3 then reset();spawnReadyAt=nil;return end
+    if pending and getGameTimer()-pending.at>8000 then
+        pending=nil
+        integration.message('AdminZone: сервер не завершил переход. Повторите вход.')
+    end
+    if not sampIsLocalPlayerSpawned() or not doesCharExist(PLAYER_PED) then
+        spawnReadyAt=nil
+        if not pending then reset() end
+        return
     end
     if not checked and ready() then
+        spawnReadyAt=spawnReadyAt or getGameTimer()
+        if cfg.main.automatic and getGameTimer()-spawnReadyAt<1500 then return end
         local identity=tostring(integration.access.identity or '')
         local boot=os.time()-getGameTimer()/1000
         local already=session.main.identity==identity and (processId and tonumber(session.main.process)==processId
             or not processId and math.abs(boot-(tonumber(session.main.boot) or 0))<5)
         checked=true;session.main.identity=identity;session.main.boot=boot;session.main.process=processId or 0
         integration.storage:saveIni(session,sessionPath)
-        if cfg.main.automatic and not already then integration.enter() end
+        if cfg.main.automatic and not already then move(true,true) end
         -- Rebuild the local exit pickup after a script reload in the zone.
         if near(-773.6,498.1,1376.6,60) then inside=true
         elseif near(2737.8,-1760.2,44.1,1.3) then latched=true end
     end
     if pending then
-        if not ready() then pending=nil
-        elseif pending.lastReply and getGameTimer()-pending.lastReply>=200 then
+        if not ready() then return end
+        if pending.lastReply and getGameTimer()-pending.lastReply>=pending.settle then
             setCharCoordinates(PLAYER_PED,pending.x,pending.y,pending.z);pending=nil
-        elseif getGameTimer()-pending.at>5000 then
-            pending=nil
-            integration.message('AdminZone: сервер не подтвердил переход. Повторите вход.')
-        end
-        if pending then return end
+        else return end
     end
     local px,py,pz=pickupPoint()
     if not integration.access:can(3) or not near(px,py,pz,100) then reset();return end
-    if not inside and getActiveInterior()~=0 then clearPickup();prompt=false;return end
-    if not ready() then prompt=false;return end
+    if not inside and getActiveInterior()~=0 then clearPickup();return end
+    if not ready() then return end
     if getGameTimer()>=nextPickup and (not pickup or not doesPickupExist(pickup)) then
         nextPickup=getGameTimer()+2000
         requestModel(1318);loadAllModelsNow()
@@ -5220,26 +5218,15 @@ integration.update=function()
         if type(id)=='number' and id>=0 then exitLabel=id end
     end
     local touching=near(px,py,pz,1.3)
-    if not touching then latched=false;prompt=false
+    if not touching then latched=false
     elseif not latched and not pending and not sampIsChatInputActive() and not sampIsDialogActive() then
-        prompt=true;latched=true
+        latched=true;move(not inside)
     end
-end
-integration.hudActive=function() return prompt,prompt,false end
-integration.drawHud=function()
-    if not prompt then return end
-    g.SetNextWindowSize(g.ImVec2(360,130),g.Cond.Always)
-    g.Begin('AdminZone##exit',nil,g.WindowFlags.NoResize)
-    g.TextWrapped(inside and 'Выйти из AdminZone в обычный мир?' or 'Войти в AdminZone?')
-    if g.Button('Да##adminzone_exit',g.ImVec2(150,32)) then integration.answer(true) end
-    g.SameLine()
-    if g.Button('Нет##adminzone_stay',g.ImVec2(150,32)) then integration.answer(false) end
-    g.End()
 end
 integration.draw=function()
     if g.Button('Телепорт в AdminZone') then integration.enter() end
 end
-integration.status=function() return {inside=inside,prompt=prompt,pending=pending~=nil} end
+integration.status=function() return {inside=inside,pending=pending~=nil} end
 
     end
     sources["modules/aegis.lua"] = function()
