@@ -5093,6 +5093,10 @@ local session=integration.storage:loadIni({main={identity='',boot=0}},sessionPat
 local inside,prompt,latched,pickup=false,false,false,nil
 local checked,pending,nextPickup=false,nil,0
 local exitLabel
+local function pickupPoint()
+    if inside then return -777.5,504.9,1376.6 end
+    return 2737.8,-1760.2,44.1
+end
 local processId
 local ok,pid=pcall(function()
     local ffi=require('ffi')
@@ -5133,9 +5137,9 @@ local function move(entering)
     -- Do not yield or create a second coroutine between the command and move.
     local x,y,z=entering and -773.6 or 2737.8,entering and 498.1 or -1760.2,entering and 1376.6 or 44.1
     setCharCoordinates(PLAYER_PED,x,y,z)
-    inside=entering;prompt=false;latched=false
+    clearPickup();nextPickup=0
+    inside=entering;prompt=false;latched=not entering
     pending={x=x,y=y,z=z,at=getGameTimer(),lastReply=nil,interiorChanged=false}
-    if not entering then clearPickup() end
     return true
 end
 integration.enter=function() return move(true) end
@@ -5143,8 +5147,9 @@ integration.answer=function(yes)
     if not prompt then return false end
     prompt=false;latched=true
     if yes then
-        if not ready() or not near(-777.5,504.9,1376.6,2.5) then return false end
-        return move(false)
+        local x,y,z=pickupPoint()
+        if not ready() or not near(x,y,z,2.5) then return false end
+        return move(not inside)
     end
     return true
 end
@@ -5183,7 +5188,8 @@ integration.update=function()
         integration.storage:saveIni(session,sessionPath)
         if cfg.main.automatic and not already then integration.enter() end
         -- Rebuild the local exit pickup after a script reload in the zone.
-        if near(-773.6,498.1,1376.6,60) then inside=true end
+        if near(-773.6,498.1,1376.6,60) then inside=true
+        elseif near(2737.8,-1760.2,44.1,1.3) then latched=true end
     end
     if pending then
         if not ready() then pending=nil
@@ -5195,24 +5201,25 @@ integration.update=function()
         end
         if pending then return end
     end
-    if not inside then return end
-    if not integration.access:can(3) or not near(-773.6,498.1,1376.6,100) then reset();return end
+    local px,py,pz=pickupPoint()
+    if not integration.access:can(3) or not near(px,py,pz,100) then reset();return end
+    if not inside and getActiveInterior()~=0 then clearPickup();prompt=false;return end
     if not ready() then prompt=false;return end
     if getGameTimer()>=nextPickup and (not pickup or not doesPickupExist(pickup)) then
         nextPickup=getGameTimer()+2000
         requestModel(1318);loadAllModelsNow()
         if hasModelLoaded(1318) then
-            local ok,handle=createPickup(1318,3,-777.5,504.9,1376.6)
+            local ok,handle=createPickup(1318,3,px,py,pz)
             if ok then pickup=handle end
             markModelAsNoLongerNeeded(1318)
         end
     end
     if not exitLabel or not sampIs3dTextDefined(exitLabel) then
-        local text=require('encoding').UTF8:decode('Выход из AdminZone\nВстаньте на пикап, чтобы выйти')
-        local id=sampCreate3dText(text,0xFFB794FF,-777.5,504.9,1377.5,25,false,-1,-1)
+        local text=require('encoding').UTF8:decode(inside and 'Выход из AdminZone\nВстаньте на пикап, чтобы выйти' or 'Вход в AdminZone\nВстаньте на пикап, чтобы войти')
+        local id=sampCreate3dText(text,0xFFB794FF,px,py,pz+0.9,25,false,-1,-1)
         if type(id)=='number' and id>=0 then exitLabel=id end
     end
-    local touching=near(-777.5,504.9,1376.6,1.3)
+    local touching=near(px,py,pz,1.3)
     if not touching then latched=false;prompt=false
     elseif not latched and not pending and not sampIsChatInputActive() and not sampIsDialogActive() then
         prompt=true;latched=true
@@ -5223,7 +5230,7 @@ integration.drawHud=function()
     if not prompt then return end
     g.SetNextWindowSize(g.ImVec2(360,130),g.Cond.Always)
     g.Begin('AdminZone##exit',nil,g.WindowFlags.NoResize)
-    g.TextWrapped('Выйти из AdminZone в обычный мир?')
+    g.TextWrapped(inside and 'Выйти из AdminZone в обычный мир?' or 'Войти в AdminZone?')
     if g.Button('Да##adminzone_exit',g.ImVec2(150,32)) then integration.answer(true) end
     g.SameLine()
     if g.Button('Нет##adminzone_stay',g.ImVec2(150,32)) then integration.answer(false) end
@@ -31295,6 +31302,13 @@ local function dashboard(rt,ui,w,h)
         ky=ky+row.height+4*scale
     end
     ui.button('home_keys',rx+pad,ry+keysH-44*scale,rightW-2*pad,'Все горячие клавиши',false,function() rt.page,rt.settingsPage='settings','keys' end)
+    local zone=rt.modules.adminzone
+    if zone and zone.enabled and zone.bridge and rt.access:can(3) then
+        ui.button('home_adminzone',rx+pad,ry+keysH+8*scale,math.min(160*scale,rightW-2*pad),'Admin Zone',false,function()
+            rt:call(zone,zone.bridge.enter)
+        end)
+        keysH=keysH+48*scale
+    end
     local bottom=(wide and leftH or math.max(leftH,ry+keysH))+gap
     local appearanceW=wide and leftW or w
     ui.text(0,bottom,'Оформление',14,p.muted,appearanceW)
@@ -31582,13 +31596,6 @@ function Workspace.draw(rt,callback)
             rt:open(item[1]);if item[1]=='settings' then rt.settingsPage='system' end
         end
         ny=ny+rowH+4*scale
-    end
-    local zone=rt.modules.adminzone
-    if zone and zone.enabled and zone.bridge and rt.access:can(3) then
-        nav.button('adminzone_quick',6*scale,ny,navWidth-12*scale,compact and 'AZ' or 'Admin Zone',false,function()
-            rt:call(zone,zone.bridge.enter)
-        end)
-        ny=ny+40*scale
     end
     g.SetCursorPos(g.ImVec2(0,ny));g.Dummy(g.ImVec2(1,1))
     g.EndChild()
