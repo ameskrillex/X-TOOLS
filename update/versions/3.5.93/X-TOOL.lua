@@ -28018,12 +28018,12 @@ function Runtime:reconcileClosedChat()
     local chat=type(api.sampIsChatInputActive)=='function' and api.sampIsChatInputActive()
     local dialog=type(api.sampIsDialogActive)=='function' and api.sampIsDialogActive()
     local menu=self.modules.menu
-    local observed=menu and menu.enabled and menu.bridge.observation and self:call(menu,menu.bridge.observation)
+    local observed=menu and menu.enabled and menu.bridge and menu.bridge.observation and self:call(menu,menu.bridge.observation)
     local now=api.getGameTimer()
     if not observed then self.nativeInputSession=nil;return end
     local pending=self.nativeInputSession
     if pending and pending.identity~=self.access.identity then self.nativeInputSession=nil;pending=nil end
-    if chat or dialog then
+    if chat or dialog or self.imgui.ShowCursor or self.imgui.LockPlayer then
         self.nativeInputSession={identity=self.access.identity,after=now+100}
         return
     end
@@ -28051,7 +28051,7 @@ function Runtime:reconcileSpectateInput()
     if not pending then return end
     local api=self.api;local now=api.getGameTimer()
     local menu=self.modules.menu
-    local observed=menu and menu.enabled and menu.bridge.observation and self:call(menu,menu.bridge.observation)
+    local observed=menu and menu.enabled and menu.bridge and menu.bridge.observation and self:call(menu,menu.bridge.observation)
     if pending.identity~=self.access.identity or now>pending.expires or now<pending.after-150 then
         self.spectateInputRelease=nil;return
     end
@@ -28125,7 +28125,11 @@ function Runtime:applyGuiState()
     self.imgui.ShowCursor = cursor
     -- The backend owns cursor capture and player locking together. Never fight
     -- its cursor thread with a per-frame lock/unlock in the application.
-    self.imgui.LockPlayer = process and lock
+    local menu=self.modules.menu
+    local observed=menu and menu.enabled and menu.bridge and menu.bridge.observation and self:call(menu,menu.bridge.observation)
+    -- Opening a settings window while spectating must not toggle player control:
+    -- MoonLoader's player lock can alter the spectator camera permanently.
+    self.imgui.LockPlayer = process and lock and not observed
     -- Input remains available to interactive windows; passive HUDs use NoInputs.
     self.imgui.DisableInput = false
 end
