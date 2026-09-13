@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "product": "CasualTool",
-  "version": "3.5.75",
-  "packagePath": "versions/3.5.75/",
+  "version": "3.5.76",
+  "packagePath": "versions/3.5.76/",
   "script": {
     "file": "X-TOOL.lua",
-    "bytes": 1556441,
-    "sha256": "9081ca303a24bf5e4cae37119b908d42c468052b8c5c6b2cbc7ccf67e5613856"
+    "bytes": 1557723,
+    "sha256": "bd145b111a5fe8405b4f8b97d53c1d76a9de8647c2e8009a0f89ddd8c99121ae"
   },
   "assets": {
     "id": "7620da8853b2d6c16d70f583fe01e5c82b2126756aba96c525de9196665f2583",
