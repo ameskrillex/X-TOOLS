@@ -5135,12 +5135,14 @@ local function move(entering,automatic)
     end
     local command=entering and '/inter 82' or '/setint 0'
     if sampSendChat(command)==false then return false end
+    local worldCommand=entering and '/setvw 777' or '/setvw 0'
+    if sampSendChat(worldCommand)==false then return false end
     -- Do not yield or create a second coroutine between the command and move.
     local x,y,z=entering and -773.6 or 2737.8,entering and 498.1 or -1760.2,entering and 1376.6 or 44.1
     setCharCoordinates(PLAYER_PED,x,y,z)
     clearPickup();nextPickup=0
     inside=entering;latched=not entering
-    pending={x=x,y=y,z=z,at=getGameTimer(),lastReply=nil,command=command,settle=automatic and 1000 or 600}
+    pending={x=x,y=y,z=z,at=getGameTimer(),lastReply=nil,command=command,worldCommand=worldCommand,settle=automatic and 1000 or 600}
     return true
 end
 integration.enter=function() return move(true) end
@@ -5150,7 +5152,7 @@ integration.homeSet=function(_,value)
 end
 local events=require('samp.events')
 events.onSendCommand=function(command)
-    if not pending or command==pending.command then return end
+    if not pending or command==pending.command or command==pending.worldCommand then return end
     local name=tostring(command):match('^/?([%w_]+)')
     -- Login helpers and automatic commands do not cancel this transition.
     if ({inter=true,setint=true,setvw=true,sp=true,gotomark=true,['goto']=true,tpm=true})[name] then pending=nil end
