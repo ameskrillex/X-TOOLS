@@ -1,2 +1,3 @@
 update/* -text
 libraries/** -text
+update/** -text
