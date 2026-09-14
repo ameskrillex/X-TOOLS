@@ -372,6 +372,9 @@ function Auth:draw(g)
     self.buffer=self.buffer or g.ImBuffer(160)
     local enabled=g.ImBool(self.data.main.enabled==true)
     if g.Checkbox('Google Auth: вводить код автоматически',enabled) then self.data.main.enabled=enabled.v;self.rt.storage:saveIni(self.data,self.path) end
+    g.SameLine()
+    if g.Button('Настройки##authenticator') then self.settingsExpanded=not self.settingsExpanded end
+    if not self.settingsExpanded then return end
     g.InputText('Ключ Google Auth##totp_secret',self.buffer,g.InputTextFlags.Password)
     if g.Button('Привязать ключ##totp_save') then if self:save(self.buffer.v) then self.buffer.v='' end end
     g.SameLine()
@@ -380,7 +383,7 @@ function Auth:draw(g)
         self.rt.storage:remove(self.secretPath..'.bak');self.data.main.enabled=false;self.data.main.nickname=''
         self.rt.storage:saveIni(self.data,self.path);self.buffer.v='';self.status='Ключ удалён.'
     end
-    g.TextWrapped('Секретный ключ из настройки Authenticator. Хранится для этого персонажа и пользователя Windows.')
+    
     if self.status~='' then g.TextWrapped(self.status) end
 end
 return Auth
@@ -879,7 +882,7 @@ function M.new(api,catalog,hash,notify)
             if g.Button('Проверить библиотеки##xt_dependencies')then self:check()end
             if #self.missing>0 and g.Button('Скачать недостающие библиотеки##xt_dependencies_install')then self:install()end
         end
-        g.TextWrapped('Существующие файлы сохраняются. Наличие файлов не гарантирует совместимость установленных версий. После установки перезапустите игру.')
+        
     end
     return self
 end
@@ -1155,9 +1158,9 @@ Help.sections = {
         'Локальная погода и время меняются только у вас. Их переключатели находятся в настройках; серверная погода меняется отдельно в инструментах.'
     },topics={
         {'Мероприятия','Выберите мероприятие, заполните его параметры и проверьте текст в предпросмотре. Для сообщения об окончании укажите победителя. Объявление отправляется кнопкой; раздел доступен с 4 уровня.'},
-        {'Невидимость','Для 1–2 уровней /inv, бинд и включение при запуске используют механизм Bart4 через spectator-синхронизацию. Он приостанавливается в транспорте и при настоящей слежке. С 3 уровня отправляется серверная /inv. Статус отображается в общем индикаторе INVISIBLE.'},
+        
         {'Дальний чат и TAB Жидкое стекло','Дальний чат выводит компактные строки с цветами ников и сообщений, включая шёпот в стриме. Откройте чат или диалог, нажмите ПКМ по дальнему чату, переместите и подтвердите ЛКМ. PageUp/PageDown листают историю. TAB Жидкое стекло заменяет прежний TAB: карточки игроков с ID, ником, уровнем и пингом, поиск, плавная прокрутка и выбор положения. ПКМ — копирование ника, двойной щелчок — стандартное действие сервера. При включённой опции удержание TAB дольше 0,7 секунды закрывает таблицу после отпускания.'},
-        {'История попаданий','Траектории выстрелов → BulletSync: переключатель, настройки HUD и последние 50 попаданий из входящих и исходящих пакетов. Запись BulletSync не является подтверждением урона сервером.'},
+        
         {'Дальность прорисовки','В игровых функциях включите дальность прорисовки и введите справа число от 0 до 3600. По умолчанию 1200. Выключение восстанавливает прежние параметры игры.'},
         {'Коррекция текста','Основные инструменты → Настройки → Чат. После включения доступны режим (до отправки, подсказка, копирование), автозаглавная буква с точкой и подсказка при входе. Клавиши исправления ввода, возврата исходного текста и применения подсказки назначаются под кнопкой «Настройки» рядом с переключателем коррекции. Текст проверяется через Яндекс Спеллер; команды авторизации не передаются сервису.'},
         {'Ускорение транспорта и ClickWarp','Включаются в игровых функциях. Ускорение из sh.cs действует при удержании Shift + W за рулём; бинд переназначается. Для ClickWarp назначьте клавишу выбора точки, начните слежку и подтвердите маркер ЛКМ; Esc отменяет. Смена наблюдаемого игрока также отменяет перенос.'},
@@ -1191,7 +1194,7 @@ Help.sections = {
     },topics={{'Исходные команды','gg, gt, mpjail, tir, rm, pg, ych, nak, oft, zb, tra, liv, vch. /mpjail выполняет /jail на 20 минут и /unjail. Перед использованием проверьте шаблон.'}},commands={}},
     {id='reminders',title='Напоминание игрокам в msg',page='reminders',intro={
         'Кнопка «Создать новый набор» добавляет ваш набор: введите название, нажмите «Создать» и заполните текст. Название и текст сохраняются после перезапуска. Выберите набор: защита аккаунта, репорт, мошенники, технические работы или выборы. Проверьте текст и нажмите «Отправить набор». В поле «Режим / радиус» задайте 0 — стандартное сообщение всем, 1 — важное всем или одно число от 20 до 300 — радиус видимости. Например: /msg 200 текст. Интервал — не менее трёх секунд. Требуется 4 уровень.',
-        'Правки наборов сохраняются. Кнопка восстановления возвращает исходные тексты. Отправка идёт по снимку выбранного набора; «Остановить», переподключение и изменение прав отменяют остаток очереди.'
+        
     },commands={}},
     {id='autoreply',title='Автоответ',page='autoreply',settings='autoreply',intro={
         'Отдельные выключатели пожеланий на гос. новости и смену nickname работают независимо от правил обычного автоответа. Текст пожелания редактируется; повторные новости одного автора ограничены интервалом 90 секунд. Используются общие настройки задержки и защиты после AFK.',
@@ -1234,7 +1237,7 @@ Help.sections = {
         {'Уровень доступа','Основные запросы доступны с 3 уровня. /admget и /iplog требуют 5 уровня. Окончательное разрешение команды проверяет сервер.'},
         {'Работа с досье','Нажмите строку, чтобы скопировать её или открыть действия с IP и аккаунтом. В досье показаны все поля профиля; большие списки авторизаций, наказаний и аккаунтов открываются по кнопке «Все записи» / «Все аккаунты» или во вкладке. Там доступны поиск и страницы результатов. Длинные строки переносятся без обрезки.'},
         {'Очередь запросов','Проверку можно остановить кнопкой. Ручной ввод команды проверки отменяет оставшийся автосбор. Запросы /offst ждут завершения семейного запроса, чтобы не перепутать ответы.'},
-        {'Экспорт и геоданные','Досье копируется или сохраняется по кнопке. Отправка сводки в /a — отдельное действие. Геоданные IP загружаются с ipwho.is и сохраняются в кэше; одинаковый IP сам по себе не доказывает принадлежность аккаунтов одному человеку.'}
+        
     },commands={
         {'/cadm','Открыть проверку игрока.'},
         {'/cget ник_или_номер_аккаунта','Запустить полную проверку аккаунта.'},
@@ -1307,8 +1310,8 @@ Help.sections = {
         'Откройте модуль и его вкладку «Настройки». Постоянные функции включаются галочками, изменения сохраняются сразу, если рядом нет отдельной кнопки сохранения. Общие права, хранение данных и обновление находятся в «Системе».'
     },topics={
         {'Оформление','На главной выбираются шрифт и цвет. Размер окна меняется перетаскиванием границы. Кнопка внизу бокового меню сворачивает его. Размер и положение окна сохраняются.'},
-        {'Google Auth','Основные инструменты → Настройки → Основные: отдельное поле секретного Base32-ключа. Войдите своим персонажем, привяжите ключ и включите автоввод. Не вводите шестизначный код вместо ключа. Хранение: Windows DPAPI; диалог №88 «Код с приложения». Для верных кодов системные часы должны быть точными.'},
-        {'Игровые функции','Здесь включаются замена /lego, AntiBH / ABHop, Matrix Jump и BackF. Три CLEO-функции перенесены в Lua и выключены по умолчанию. Сочетания игровых кнопок сохранены из исходников; отдельные CLEO-файлы не нужны.'},
+        
+        
         {'Fast Connect','Работает автоматически с самого запуска X-Tools без переключателя. Патч применяется только при совпадении проверенной версии и байтов samp.dll.'},
         {'После /tr','Основные инструменты → Настройки → Основные: опция «После /tr: подбросить игрока и обновить слежку». После перемещения отправляются /slap ID и /sp ID с интервалом 350 мс. При отключении или смене игрока очередь отменяется.'},
         {'Конфликты клавиш','Нажмите сочетание, затем новую клавишу. Escape отменяет ввод. Если сочетание занято, перенос назначения требует отдельного нажатия; ошибка сохранения оставляет прежние клавиши.'},
@@ -8803,7 +8806,7 @@ function setup_aegis_ui()
         meta('Лидеры',snapshot and count(leaders) or state.known_leader_count)
         meta('Уникальных ников',snapshot and count(unique) or state.known_admin_count)
         imgui.TextWrapped(SETTINGS.block_known_admin_targets and 'Защита включена' or 'Защита выключена: эти списки не блокируют наказания.')
-        imgui.TextWrapped(snapshot and 'Источник: текущие списки чекера, включая офлайн-игроков и встроенные записи.' or 'Чекер недоступен. Используются сохранённые списки.')
+        
         if imgui.Button('Перечитать списки') then refresh_protected_list() end
         if imgui.Button('Настроить списки в чекере') then integration.openSettings('adm') end
         imgui.Spacing()
@@ -9231,6 +9234,7 @@ integration.update=function()
     end
     keepAnimation()
 end
+local settingsExpanded=false
 integration.drawSettings=function()
     local value=g.ImBool(cfg.main.enabled==true)
     if g.Checkbox('AirBreak',value)then
@@ -9238,12 +9242,15 @@ integration.drawSettings=function()
         integration.storage:saveIni(cfg,path)
         if not value.v then stop()end
     end
+    g.SameLine()
+    if g.Button('Настройки##airbreak_settings') then settingsExpanded=not settingsExpanded end
+    if not settingsExpanded then return end
     g.TextDisabled('AirBreak '..(active and 'работает' or 'не запущен'))
     integration.keys:draw(g,'airbreak');integration.keys:draw(g,'airbreak_stop')
     local mode=g.ImInt((tonumber(cfg.main.mode)or 2)-1)
     if g.Combo('Скорость##airbreak',mode,{'Медленно','Обычно','Быстро'})then cfg.main.mode=mode.v+1;integration.storage:saveIni(cfg,path)end
     g.TextWrapped('WASD — движение; Q/E — высота пешком; ↑/↓ — высота транспорта; ←/→ — поворот. Num 1/2/3 — скорость. ↓ пешком — опуститься на землю.')
-    g.TextDisabled('Пешком во время полёта повторяется анимация Swim_Tread.')
+    
 end
 
     end
@@ -9420,7 +9427,7 @@ integration.drawSettings=function()
         changed=settings.integer(g,item[1],cfg.main,item[2],item[3],item[4],item[5]) or changed
     end
     g.PopItemWidth();if changed then save() end
-    g.TextWrapped('Частичное: ключ входит в обращение. Точное: всё обращение совпадает с ключом. Задержанные ответы отменяются при выходе из игры, смене игрока на ID или изменении настроек.')
+    
 end
 
     end
@@ -9523,7 +9530,7 @@ integration.draw=function()
     g.SameLine();if g.Button('Запустить##autostart') then save();run() end
     g.SameLine();if g.Button('Остановить##autostart') then cancelRun();status='Остановлено.' end
     g.Separator()
-    g.TextWrapped('Авто: команды с / обрабатывает клиент. Локальная: через ввод чата. Серверная: напрямую серверу.')
+    
     if g.Button('Добавить команду##autostart_add') and cfg.main.row_count<MAX_ROWS then
         cfg.main.row_count=cfg.main.row_count+1
         cfg['row'..cfg.main.row_count]={enabled=true,mode='auto',delay_ms=500,command=''}
@@ -9628,6 +9635,7 @@ integration.update=function()
     local vz=math.max(vertical,(ground-aheadZ+1.25)*8)+0.8
     setCharVelocity(ped,vx,vy,vz)
 end
+local settingsExpanded=false
 integration.drawSettings=function()
     local value=g.ImBool(cfg.main.enabled==true)
     if g.Checkbox('Метла',value)then
@@ -9635,6 +9643,9 @@ integration.drawSettings=function()
         integration.storage:saveIni(cfg,path)
         if not value.v then stop()end
     end
+    g.SameLine()
+    if g.Button('Настройки##broom_settings') then settingsExpanded=not settingsExpanded end
+    if not settingsExpanded then return end
     g.TextDisabled('Метла '..((active or loading) and 'работает' or 'не запущен'))
     integration.keys:draw(g,'broom')
     local size=g.ImFloat(tonumber(cfg.main.scale)or 1.5)
@@ -9809,7 +9820,7 @@ local function color_editor(label,group,key)
 end
 integration.drawSettings=function()
     checkbox('Показывать траектории пуль##bullet_enabled',settings.Main,'enabled')
-    imgui.TextWrapped('Линия показывает направление выстрела; она не подтверждает урон.')
+    
     imgui.Separator()
     if imgui.Button('Другие игроки##bullet_other') then selected='Other' end
     imgui.SameLine()
@@ -14777,7 +14788,7 @@ integration.drawSettings=function()
     g.SameLine()
     if g.Button('Настройки##correction_settings') then settingsExpanded=not settingsExpanded end
     if not settingsExpanded then return end
-    g.TextWrapped('Проверка текста через Яндекс Спеллер. Исправление и возврат исходного текста работают в открытом чате. Команды авторизации и параметры игровых действий не проверяются.')
+    
     integration.keys:draw(g,'correction_input')
     integration.keys:draw(g,'correction_undo')
     integration.keys:draw(g,'correction_apply')
@@ -15268,7 +15279,7 @@ integration.drawSettings = function()
     imgui.TextWrapped('Общий переключатель включает название семьи в наблюдении и семейные команды. Параметры контроля аптечек — ниже.')
     local opts=integration.service('combo_settings.lua')
     local changed=opts.toggle(imgui,'Отвечать на вопросы о семье',replies.main,'enabled')
-    imgui.TextWrapped('Репорты: 57 фама; Ombre_Leather в какой фаме?; Ombre Leather какая фама? Ник — 1–3 части. Проверка /offst, ответ автору /ans.')
+    
     imgui.PushItemWidth(130)
     changed=opts.integer(imgui,'Задержка ответа, сек.',replies.main,'delay',2,0,300) or changed
     changed=opts.integer(imgui,'Интервал повтора, сек.',replies.main,'cooldown',15,1,3600) or changed
@@ -22309,8 +22320,8 @@ function integration.drawSettings()
         if not auto_collect_state[0] then stop_all_checks('Автосбор выключен') end
     end
     imgui.TextWrapped('Автосбор отправляет только доступные вашему уровню запросы. Основные сведения — с 1 уровня, IP и связанные аккаунты — с 3, /admget — с 5. Отключение отменяет текущую очередь запросов.')
-    imgui.TextWrapped('Досье сохраняется в TXT по кнопке «Сохранить в TXT». Файлы находятся в moonloader/X-TOOL/data/dossiers.')
-    imgui.TextWrapped('Геоданные загружаются с ipwho.is и сохраняются для повторного просмотра. Местоположение по IP приблизительное и само по себе не подтверждает связь аккаунтов.')
+    
+    
     View.button('Справка по проверке игрока##lookup_settings_help', function() integration.openHelp('lookup') end)
 end
 
@@ -24248,11 +24259,15 @@ integration.homeSet=function(key,value)
     cfg.main.enabled=value==true;integration.storage:saveIni(cfg,path)
     if not cfg.main.enabled then restore() else nextScan=0 end
 end
+local settingsExpanded=false
 integration.drawSettings=function()
     local enabled=g.ImBool(cfg.main.enabled)
     if g.Checkbox('Свой цвет ников в маске',enabled)then
         integration.homeSet('enabled',enabled.v)
     end
+    g.SameLine()
+    if g.Button('Настройки##mask_names_settings') then settingsExpanded=not settingsExpanded end
+    if not settingsExpanded then return end
     local ref=g.ImFloat4(g.ImColor(bit.band(bit.rshift(chosen,16),255),bit.band(bit.rshift(chosen,8),255),bit.band(chosen,255),255):GetFloat4())
     if g.ColorEdit4('Цвет ников в маске',ref) then
         restore()
@@ -24260,7 +24275,7 @@ integration.drawSettings=function()
         chosen=bit.bor(bit.lshift(channel(ref.v[1]),16),bit.lshift(channel(ref.v[2]),8),channel(ref.v[3]))
         cfg.main.color=chosen;integration.storage:saveIni(cfg,path);nextScan=0
     end
-    g.TextWrapped('Выбранный цвет используется для ников, надписи MASKED над головой, входов/выходов и строки «В маске» в онлайне банд. Категория MASK сохраняется независимо от цвета. Прозрачность всегда полная.')
+    
 end
 
     end
@@ -25782,20 +25797,27 @@ integration.update=function()
 end
 integration.onDisconnect=cancel
 integration.stop=cancel
+local settingsExpanded={}
 integration.drawSettings=function()
     local g=require('imgui')
     for _,item in ipairs({{'antiBH','Баннихоп (AntiBH)'},{'matrixJump','Акробатический прыжок'},{'backFlip','Сальто назад'}}) do
         local value=g.ImBool(integration.preferences.data.main[item[1]])
         if g.Checkbox(item[2],value) then integration.preferences.data.main[item[1]]=value.v;integration.preferences:save();cancel() end
+        if item[1]~='antiBH' then
+            g.SameLine()
+            if g.Button('Настройки##movement_'..item[1]) then settingsExpanded[item[1]]=not settingsExpanded[item[1]] end
+        end
+        if settingsExpanded[item[1]] then
         if item[1]=='matrixJump' then
-            g.TextWrapped('Усиленный прыжок с вращением: скорость вперёд ×1,69 и подброс вверх. Ранее Matrix Jump.')
+            
             integration.keys:draw(g,'matrix_jump')
         elseif item[1]=='backFlip' then
-            g.TextWrapped('Подброс вверх с сальто назад. Ранее BackF.')
+            
             integration.keys:draw(g,'back_flip')
         end
+        g.TextWrapped('Без назначенной клавиши трюк не запускается.')
+        end
     end
-    g.TextWrapped('Без назначенной клавиши трюк не запускается.')
 end
 
 -- Assigned keys replace the source combinations; an unassigned binding keeps them.
@@ -25856,15 +25878,37 @@ local function warn(id,text)
     push(warnings,os.date('%H:%M:%S')..' '..line,100)
     sampAddChatMessage('{FF6060}[Warning] {FFFFFF}'..u8:decode(line),-1)
 end
+local function onFoot(id)
+    if not streamed(id) then return false end
+    local own,localID=sampGetPlayerIdByCharHandle(PLAYER_PED)
+    local found,ped=sampGetCharHandleBySampPlayerId(id)
+    if own and id==localID then found,ped=true,PLAYER_PED end
+    return found and ped and doesCharExist(ped) and not isCharInAnyCar(ped)
+end
+local function checkMedkit(id,data)
+    local item=medkits[id]
+    if not item then return end
+    if not cfg.warnings.enabled or not cfg.warnings.medkit or not usable()
+        or not onFoot(id) or item.nick~=player(id) or now()>=item.expires then medkits[id]=nil;return end
+    if tonumber(data.animationId)==1157 then item.started=true
+    elseif item.started then warn(id,'возможный сбив анимации аптечки');medkits[id]=nil
+    elseif now()>item.check then warn(id,'не появилась анимация аптечки');medkits[id]=nil end
+end
 function events.onPlayerSync(id,data)
     sample(id,data,false)
-    local item=medkits[id]
-    if cfg.warnings.enabled and cfg.warnings.medkit and item then
-        if item.nick~=player(id) or now()>item.expires then medkits[id]=nil
-        elseif tonumber(data.animationId)==1157 then item.started=true
-        elseif item.started then warn(id,'возможный сбив анимации аптечки');medkits[id]=nil
-        elseif now()>item.check then warn(id,'не появилась анимация аптечки');medkits[id]=nil end
+    checkMedkit(id,data)
+end
+function events.onSendPlayerSync(data)
+    local ok,id=sampGetPlayerIdByCharHandle(PLAYER_PED)
+    if ok then
+        if cfg.warnings.debug then checkMedkit(id,data) else medkits[id]=nil end
     end
+end
+function events.onClearPlayerAnimation(id) medkits[id]=nil end
+local function startMedkit(id,duration)
+    if not cfg.warnings.enabled or not cfg.warnings.medkit or not usable() or not onFoot(id) then return end
+    duration=math.min(10,math.max(1,tonumber(duration) or 4))
+    medkits[id]={nick=player(id),expires=now()+duration,check=now()+duration-2.1}
 end
 function events.onVehicleSync(id,vehicle,data) medkits[id]=nil;sample(id,data,true) end
 function events.onAimSync(id,data)
@@ -25878,15 +25922,13 @@ function events.onAimSync(id,data)
     aims[id]={nick=player(id),time=now(),x=x/length,y=y/length,z=z/length}
 end
 function events.onApplyPlayerAnimation(id,lib,name,delta)
-    if cfg.warnings.enabled and cfg.warnings.medkit and name=='gum_eat' and streamed(id) then
-        medkits[id]={nick=player(id),expires=now()+math.min(10,math.max(1,tonumber(delta) or 4)),check=now()+1.9}
-    end
+    if name=='gum_eat' then startMedkit(id,delta) end
 end
 function events.onPlayerChatBubble(id,color,distance,duration,text)
     if not streamed(id) then return end
     text=tostring(u8(text)):gsub('{%x%x%x%x%x%x}','')
     if cfg.warnings.enabled and cfg.warnings.medkit and color==-1721303041 and text:match('%+%d+%s+Hp') then
-        medkits[id]={nick=player(id),expires=now()+4,check=now()+1.9}
+        startMedkit(id,4)
     end
     if not cfg.chat.enabled then return end
     for _,pattern in ipairs({'На паузе %d+:%d+','На паузе %d+ сек.','%d+ hp','%+%d+%s+Hp','На паузе более часа'}) do if text:match(pattern) then return end end
@@ -26034,7 +26076,7 @@ integration.drawSettings=function()
             if id=='dm' then
                 if g.CollapsingHeader('История попаданий (до 50)') then for _,line in ipairs(shots)do g.TextWrapped(line)end end
                 g.TextWrapped('Показывает попадания по BulletSync, а не подтверждённый урон сервера. История: последние 50 попаданий.')end
-            if id=='chat' then g.TextWrapped('Сообщения и шёпот из полученных чат-пузырей игроков в стриме. Для перемещения откройте чат/диалог, нажмите ПКМ на панели, затем ЛКМ в новом месте. История: до 500 сообщений.')end
+            
         end
         g.PopItemWidth();if dirty then save()end
         end
@@ -26048,14 +26090,14 @@ integration.drawHitHistory=function()
     g.PopItemWidth();if dirty then save()end
     if g.Button('Очистить историю попаданий')then shots={}end
     end
-    g.TextWrapped('Последние 50 попаданий по входящим и собственным BulletSync. Пакет попадания не подтверждает фактический урон.')
+    
     for _,line in ipairs(shots)do g.TextWrapped(line)end
 end
 integration.draw=function()
-    local showSettings=controls('warnings');g.TextWrapped('Возможные нарушения, не доказательство. Автоматические наказания не выполняются.')
+    local showSettings=controls('warnings')
     if showSettings then
-    g.TextWrapped('Уведомления выводятся в игровой чат, как в sp_plus. Три коротких интервала вызывают варнинг; через 7 секунд без нарушения счётчик сбрасывается.')
-    local p=cfg.warnings;local dirty=settings.toggle(g,'Отладка: проверять собственные выстрелы',p,'debug')
+    
+    local p=cfg.warnings;local dirty=settings.toggle(g,'Отладка: свои выстрелы и аптечки',p,'debug')
     for _,v in ipairs({{'Слишком быстрая стрельба','rapid'},{'Попадания через препятствия','obstacles'},{'Сбив или отсутствие анимации аптечки','medkit'}})do dirty=settings.toggle(g,v[1],p,v[2])or dirty end
     g.PushItemWidth(140)
     for _,v in ipairs({{'Deagle: минимальный интервал, сек.','deagle',0.01,1.5},{'M4: минимальный интервал, сек.','m4',0.001,0.5}})do
@@ -26648,7 +26690,7 @@ integration.draw=function()
     if index<=builtinCount and g.Button('Вернуть исходный текст##reminders')then
         cfg['pack'..index]=nil;select(index);integration.storage:saveIni(cfg,path)
     end
-    g.TextWrapped('Одна строка — одно сообщение. Тексты из исходника можно изменить перед отправкой.')
+    
     if g.Button('Отправить набор##reminders') and not queue and integration.access:require(4,integration.message)then
         local pending={};local valid=true
         local target,err=integration.service('msg_targets.lua').parse(targetInput.v)
@@ -26963,7 +27005,7 @@ integration.drawSettings=function()
     if g.Button('Настройки##speed_boost_settings')then settingsExpanded=not settingsExpanded end
     if not settingsExpanded then return end
     integration.keys:draw(g,'speed_boost')
-    g.TextWrapped('Удерживайте назначенную комбинацию за рулём. По умолчанию Shift + W. Поведение ускорения перенесено из sh.cs.')
+    
 end
 
     end
@@ -27530,7 +27572,7 @@ return M
 -- Every outgoing /offban is preceded by a /baninfo response.
 local Guard={}
 Guard.__index=Guard
-function Guard.new(rt) return setmetatable({rt=rt,queue={},results={}},Guard) end
+function Guard.new(rt) return setmetatable({rt=rt,queue={},results={},requests={}},Guard) end
 function Guard:enqueue(owner,api,command)
     if self.releasing then return false end
     local verb=command:match('^(/%S+)')
@@ -27545,28 +27587,47 @@ function Guard:enqueue(owner,api,command)
         revision=self.rt.access:revision(),original=command}
     return true
 end
-function Guard:reset() self.queue={};self.pending=nil;self.releasing=false end
+function Guard:reset() self.queue={};self.pending=nil;self.releasing=false;self.requests={} end
+function Guard:track(command)
+    local target=tostring(command or ''):match('^/[Bb][Aa][Nn][Ii][Nn][Ff][Oo]%s+(%S+)')
+    if not target then return end
+    local row={target=target:lower(),pending=self.issuing,ambiguous=#self.requests>0}
+    for _,request in ipairs(self.requests) do request.ambiguous=true end
+    self.requests[#self.requests+1]=row
+end
 function Guard:cancel(owner)
     for i=#self.queue,1,-1 do if self.queue[i].owner==owner then table.remove(self.queue,i) end end
     if self.pending and self.pending.owner==owner then self.pending=nil;self.cooldown=self.rt.api.os.clock()+11 end
 end
 function Guard:observe(name,...)
-    local p=self.pending;if not p then return end
+    local p=self.pending
+    if not p and #self.requests==0 then return end
     local args={...};local u8=self.rt.api.require('encoding').UTF8
     if name=='onShowDialog' then
         local title=tostring(u8(args[3] or '')):gsub('{%x+}',''):match('^%s*(.-)%s*$')
-        if args[2]~=0 or title:lower()~=p.target:lower() then return end
+        if args[2]~=0 then return end
+        for i,request in ipairs(self.requests) do
+            if request.target==title:lower() then table.remove(self.requests,i);break end
+        end
+        if not p or title:lower()~=p.target:lower() then return end
         local text=tostring(u8(args[6] or '')):gsub('{%x+}','')
         local days=text:match('дней до конца бана:%s*(%d+)') or text:match('Дней до конца бана:%s*(%d+)')
         if days then p.remaining=tonumber(days);p.dialogId=args[1];return false end
         if text:find('не забанен',1,true) or text:find('не находится в бан',1,true) then p.remaining=0;p.dialogId=args[1];return false end
-    elseif name=='onServerMessage' and p.remaining==nil then
-        local text=tostring(u8(args[2] or '')):gsub('{%x+}',''):match('^%s*(.-)%s*$')
+    elseif name=='onServerMessage' then
+        local ok,decoded=pcall(u8,args[2] or '')
+        if not ok then return end
+        local text=tostring(decoded):gsub('{%x+}',''):match('^%s*(.-)%s*$')
         if text=='Игрок с таким ником (или номером аккаунта) не найден в банлисте'
             or text=='Игрок с таким ником (или номером аккаунта) не найден в банлисте.' then
-            -- This response has no target. It may belong to a timed-out or
-            -- manually issued request, so it cannot authorize a punishment.
-            p.uncorrelatedReply=true
+            local request=table.remove(self.requests,1)
+            if p and p.remaining==nil then
+                if request and request.pending==p and not request.ambiguous then
+                    p.remaining=0
+                else
+                    p.uncorrelatedReply=true
+                end
+            end
         end
     end
 end
@@ -27596,7 +27657,9 @@ function Guard:update()
     p=table.remove(self.queue,1)
     if p.revision~=rt.access:revision() or not rt.access:can(1) then return end
     p.started=rt.api.os.clock();self.pending=p
+    self.issuing=p
     rt:send(p.owner,'sampSendChat','/baninfo '..p.target)
+    self.issuing=nil
 end
 return Guard
 
@@ -28075,7 +28138,7 @@ end
 
 function Runtime:dispatch(name, ...)
     if name=='onHideMenu' and self.hidingServerMenu then return end
-    if name=='onSendCommand' and not self.outboundOwner then self:traceInspection(nil,(...))end
+    if name=='onSendCommand' and not self.outboundOwner then self:traceInspection(nil,(...));self.offban:track((...))end
     if self:checkSession()==false then return end
     -- Menu definitions are passive protocol data, not privileged actions.
     -- INITMENU can precede authorization and module startup; SHOWMENU reuses it.
@@ -28547,6 +28610,7 @@ function Runtime:send(owner, apiName, ...)
             billboard=4,dplant=4,dtune=4})[command:lower()]
         if required and not self.access:require(required,function(message)self:message(message)end) then return false end
         if self.offban:enqueue(owner,apiName,text) then return true end
+        self.offban:track(text)
     end
     self:traceInspection(owner,arguments[1])
     local previous=self.outboundOwner
@@ -28895,12 +28959,12 @@ function Runtime:drawSystemSettings()
     g.Text('Права администратора')
     local level=self.access:level()
     g.TextWrapped(level~=nil and ('Уровень в текущей сессии: '..level) or 'Уровень пока не подтверждён сервером. Ограниченные действия недоступны; меню и настройки работают.')
-    g.TextWrapped('Все разделы используют общие права текущего аккаунта. После переподключения или смены аккаунта требуется новое подтверждение сервера.')
+    
     form.next(columns)
     g.Text('Хранение данных')
     g.TextWrapped('Настройки, данные, кэш и журналы находятся в одном каталоге:')
     g.TextWrapped(self.api.require('encoding').UTF8(self.storage.root))
-    g.TextWrapped('При первом запуске прежние файлы копируются сюда. Новые файлы имеют приоритет; старые остаются на месте.')
+    
     if #self.storage.errors>0 then
         g.TextWrapped('Есть ошибки хранения данных: '..#self.storage.errors..'. Подробности — в moonloader.log. Проверьте доступ к каталогу и свободное место.')
     end
@@ -29315,6 +29379,38 @@ function View.draw(rt)
     end
 end
 return View
+
+    end
+    sources["server_weather.lua"] = function()
+local M={}
+local groups={
+    {'Ясная и солнечная',{
+        {0,'Очень солнечно · Лос-Сантос'},{1,'Солнечно · Лос-Сантос'},
+        {5,'Солнечно · Сан-Фиерро'},{6,'Очень солнечно · Сан-Фиерро'},
+        {10,'Солнечно · Лас-Вентурас'},{11,'Очень солнечно · Лас-Вентурас'},
+        {13,'Солнечно · сельская местность'},{14,'Солнечно · второй вариант'},
+        {17,'Очень солнечно · пустыня'},{18,'Солнечно · пустыня'}}},
+    {'Облачная и смог',{
+        {2,'Очень солнечно со смогом'},{3,'Солнечно со смогом'},
+        {4,'Облачно · Лос-Сантос'},{7,'Облачно · Сан-Фиерро'},
+        {12,'Облачно · Лас-Вентурас'},{15,'Облачно · сельская местность'}}},
+    {'Дождь и туман',{{8,'Дождь · Сан-Фиерро'},{9,'Туман · Сан-Фиерро'},{16,'Дождь · сельская местность'}}},
+    {'Особая погода',{{19,'Песчаная буря'},{20,'Подводный эффект'}}}
+}
+function M.draw(g,send)
+    g.TextWrapped('Выберите тип погоды. Изменение применяется ко всему серверу.')
+    g.Separator()
+    for _,group in ipairs(groups) do
+        if g.CollapsingHeader(group[1]..' ('..#group[2]..')') then
+            for _,row in ipairs(group[2]) do
+                if g.Selectable(row[2]..' · ID '..row[1]..'##server_weather_'..row[1]) then
+                    send('/setweather '..row[1])
+                end
+            end
+        end
+    end
+end
+return M
 
     end
     sources["settings_index.lua"] = function()
@@ -31506,7 +31602,7 @@ local function drawModule(rt,callback,spec)
         end
     else
         g.TextWrapped(spec[3])
-        g.TextDisabled('Этот модуль работает через команды или игровые события.')
+        
     end
 end
 
@@ -35530,91 +35626,9 @@ function imguiOnDrawFrame()
 
 				imgui.SetNextWindowPos(imgui.ImVec2(weatherScreenWidth / 2 + 300, weatherScreenHeight / 2 - 95), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
 				imgui.SetNextWindowSize(imgui.ImVec2(250, 255), imgui.Cond.FirstUseEver)
-				imgui.Begin("Изменение погоды", weather_window, imgui.WindowFlags.AlwaysAutoResize)
+				imgui.Begin("Погода сервера", weather_window, imgui.WindowFlags.AlwaysAutoResize)
 
-				if imgui.Selectable("Синие небеса/облака (ID:0)") then
-					sampSendChat("/setweather 0")
-				end
-
-				if imgui.Selectable("Синие небеса/облака (ID:1)\"") then
-					sampSendChat("/setweather 1")
-				end
-
-				if imgui.Selectable("Синие небеса/облака (ID:2)") then
-					sampSendChat("/setweather 2")
-				end
-
-				if imgui.Selectable("Синие небеса/облака (ID:3)") then
-					sampSendChat("/setweather 3")
-				end
-
-				if imgui.Selectable("Синие небеса/облака (ID:4)") then
-					sampSendChat("/setweather 4")
-				end
-
-				if imgui.Selectable("Синие небеса/облака (ID:5)") then
-					sampSendChat("/setweather 5")
-				end
-
-				if imgui.Selectable("Синие небеса/облака (ID:6)") then
-					sampSendChat("/setweather 6")
-				end
-
-				if imgui.Selectable("Синие небеса/облака (ID:7)") then
-					sampSendChat("/setweather 7")
-				end
-
-				if imgui.Selectable("Гроза (ID:8)") then
-					sampSendChat("/setweather 8")
-				end
-
-				if imgui.Selectable("Пасмурно и туман (ID:9)") then
-					sampSendChat("/setweather 9")
-				end
-
-				if imgui.Selectable("Ясное синее небо (ID:10)") then
-					sampSendChat("/setweather 10")
-				end
-
-				if imgui.Selectable("Обжигающая жаркая (ID:11)") then
-					sampSendChat("/setweather 11")
-				end
-
-				if imgui.Selectable("Очень тусклый, бесцв, смутные (ID:12)") then
-					sampSendChat("/setweather 12")
-				end
-
-				if imgui.Selectable("Очень тусклый, бесцв, смутные (ID:13)") then
-					sampSendChat("/setweather 13")
-				end
-
-				if imgui.Selectable("Очень тусклый, бесцв, смутные (ID:14)") then
-					sampSendChat("/setweather 14")
-				end
-
-				if imgui.Selectable("Очень тусклый, бесцв, смутные (ID:15)") then
-					sampSendChat("/setweather 15")
-				end
-
-				if imgui.Selectable("Тусклый, неясный, дождливые (ID:16)") then
-					sampSendChat("/setweather 16")
-				end
-
-				if imgui.Selectable("Опаливая горячие (ID:17)") then
-					sampSendChat("/setweather 17")
-				end
-
-				if imgui.Selectable("Опаливая горячие (ID:18)") then
-					sampSendChat("/setweather 18")
-				end
-
-				if imgui.Selectable("Песчаная буря (ID:19)") then
-					sampSendChat("/setweather 19")
-				end
-
-				if imgui.Selectable("Туманный/зеленоватые (ID:20)") then
-					sampSendChat("/setweather 20")
-				end
+				integrationRuntime:service('server_weather.lua').draw(imgui, sampSendChat)
 
 				imgui.End()
 			end
@@ -36306,7 +36320,9 @@ function imguiOnDrawFrame()
 					imgui.SameLine()
 					ShowHelpMarker("С 4 уровня: выдаёт выбранный временный скин при входе и после выхода из слежки.")
 
-					if skin_changer then
+					imgui.SameLine()
+					if imgui.Button('Настройки##auto_skin') then integrationRuntime.autoSettings_skin=not integrationRuntime.autoSettings_skin end
+					if integrationRuntime.autoSettings_skin then
 						imgui.InputText("ID скина", skin_text_buffer)
 
 						if imgui.Button("Предпросмотр скина") then
@@ -36409,7 +36425,9 @@ function imguiOnDrawFrame()
 					imgui.SameLine()
 					ShowHelpMarker("Автоматически вводит сохранённый пароль при входе на сервер. Пароль хранится в файле настроек в зашифрованном виде.")
 
-					if autoLoginStatus then
+					imgui.SameLine()
+					if imgui.Button('Настройки##auto_password') then integrationRuntime.autoSettings_password=not integrationRuntime.autoSettings_password end
+					if integrationRuntime.autoSettings_password then
 						imgui.InputText("Введите пароль", password_text_buffer, imgui.InputTextFlags.Password)
 
 						if imgui.Button("Сохранить") then

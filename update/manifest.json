@@ -5,8 +5,8 @@
   "packagePath": "versions/3.5.101/",
   "script": {
     "file": "X-TOOL.lua",
-    "bytes": 1650328,
-    "sha256": "b83865b943df5f27747ca6ecace109d207c49d1f46833de0c24efa6edcc476bd"
+    "bytes": 1645182,
+    "sha256": "5d1a49be8d61d5f2dc090de73875b4f3da00fb2749402758a36285c66c976125"
   },
   "assets": {
     "id": "7620da8853b2d6c16d70f583fe01e5c82b2126756aba96c525de9196665f2583",
