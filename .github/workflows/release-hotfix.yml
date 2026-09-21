@@ -1,0 +1,38 @@
+name: Verify and publish 3.5.171
+on:
+  push:
+    branches: [main]
+    paths: ['update/manifest.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-3.5.171
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install LuaJIT test runtime
+        run: python -m pip install lupa==2.8
+      - name: Run regression tests
+        run: python tests/test_hotfix.py
+      - name: Download verified base distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v3.5.170 --pattern X-Tools.zip --dir base
+      - name: Build and verify distribution
+        run: python tools/package_hotfix.py base/X-Tools.zip dist
+      - name: Publish prerelease with verified assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v3.5.171 >/dev/null 2>&1; then
+            echo 'Release v3.5.171 already exists; refusing to replace it.'
+            exit 1
+          fi
+          gh release create v3.5.171 dist/X-Tools.zip dist/X-Tools-Libraries.lua dist/X-TOOL.lua --target "$GITHUB_SHA" --title 'X-Tools 3.5.171' --notes-file release-notes.md --prerelease
