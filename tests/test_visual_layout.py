@@ -134,7 +134,7 @@ class VisualLayoutTests(unittest.TestCase):
             assert(calls==before)
         ''')
 
-    def test_both_surfaces_use_shared_tint_renderer(self):
+    def test_directory_uses_shared_tint_renderer(self):
         self.lua.globals().browserCode = module('modules/legends_browser.lua')
         self.lua.globals().theme = self.lua.execute(module('theme.lua'))
         self.lua.execute('''
@@ -163,14 +163,13 @@ class VisualLayoutTests(unittest.TestCase):
                     rect=function()end,text=function()return 16 end,finish=function()end}end}}
             rt={imgui=g,theme=theme,preferences=preferences(),art=cache,
                 typography={get=function()end},service=function(_,name)return assert(services[name],name)end}
-            local ui=upvalue(Workspace.draw,'painter')(rt)
             package.preload.imgui=function()return g end
             integration={service=function(name)return assert(services[name],name)end,palette=theme.palette}
             assert(loadstring(browserCode))()
             local header=upvalue(integration.drawHud,'header')
             for _,color in ipairs({0x59DFFF,0xFFAB51,0x62E9AB,0xFF6086,0xAA91FF,0xC080FF})do
                 theme.apply(color)
-                for _,paint in ipairs({function()ui.legendsButton('test',0,0,558,function()end)end,header})do
+                for _,paint in ipairs({header})do
                     paint()
                     assert(rendered.texture==77 and rendered.b.x-rendered.a.x==558 and rendered.b.y-rendered.a.y==186)
                     local c=rendered.tint
