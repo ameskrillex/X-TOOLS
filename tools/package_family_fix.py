@@ -10,18 +10,18 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_SHA256 = 'f90f33c07dc5b7e731cc6bebc46412bce01ed2b989dd7bd52b5caefa3378be22'
 
 
-def build(base_archive, destination):
-    assert hashlib.sha256(base_archive.read_bytes()).hexdigest() == BASE_SHA256, 'Wrong base archive'
+def build(base_archive, destination, base_version='3.5.206', version='3.5.207', base_sha256=BASE_SHA256):
+    assert hashlib.sha256(base_archive.read_bytes()).hexdigest() == base_sha256, 'Wrong base archive'
     manifest = json.loads((ROOT / 'update/live/manifest.json').read_text(encoding='utf-8'))
-    assert manifest['version'] == '3.5.207'
+    assert manifest['version'] == version
     code = (ROOT / 'X-TOOL.lua').read_bytes()
     assert len(code) == manifest['script']['bytes']
     assert hashlib.sha256(code).hexdigest() == manifest['script']['sha256']
-    assert code == (ROOT / 'update/live/versions/3.5.207/X-TOOL.lua').read_bytes()
+    assert code == (ROOT / 'update/live/versions' / version / 'X-TOOL.lua').read_bytes()
     destination.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(base_archive) as source:
         assert source.testzip() is None
-        assert source.read('X-TOOL.lua') == (ROOT / 'update/live/versions/3.5.206/X-TOOL.lua').read_bytes()
+        assert source.read('X-TOOL.lua') == (ROOT / 'update/live/versions' / base_version / 'X-TOOL.lua').read_bytes()
         with zipfile.ZipFile(destination / 'X-Tools.zip', 'w') as target:
             for info in source.infolist():
                 data = code if info.filename == 'X-TOOL.lua' else source.read(info.filename)
@@ -47,5 +47,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('base_archive', type=Path)
     parser.add_argument('destination', type=Path)
+    parser.add_argument('--base-version', default='3.5.206')
+    parser.add_argument('--version', default='3.5.207')
+    parser.add_argument('--base-sha256', default=BASE_SHA256)
     args = parser.parse_args()
-    build(args.base_archive, args.destination)
+    build(args.base_archive, args.destination, args.base_version, args.version, args.base_sha256)
