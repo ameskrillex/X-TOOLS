@@ -1,0 +1,37 @@
+name: Verify and publish memory budget 3.5.212
+on:
+  push:
+    branches: [main]
+    paths: ['update/live/versions/3.5.212/manifest.json']
+permissions:
+  contents: write
+concurrency:
+  group: release-3.5.212
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install lupa==2.8
+      - run: |
+          python -m unittest discover -s tests -p 'test_*.py'
+          python tools/verify_distribution.py
+      - name: Download verified base archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v3.5.211 --pattern X-Tools.zip --dir base
+      - name: Build and verify full archive
+        run: python tools/package_family_fix.py base/X-Tools.zip dist --base-version 3.5.211 --version 3.5.212 --base-sha256 3ef4fc24ef967de8abbb2fc5c4bb9fff1e68e90102f4aee305f3ece51036e08f
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v3.5.212 >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to replace it.'
+            exit 1
+          fi
+          gh release create v3.5.212 dist/X-Tools.zip dist/X-TOOL.lua --target "$GITHUB_SHA" --title 'X-Tools 3.5.212 — снижение нагрузки на память' --notes-file release-notes.md --prerelease
