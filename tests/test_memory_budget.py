@@ -32,41 +32,40 @@ class ArtworkTests(unittest.TestCase):
             art=Art.new(g,'resources',api)
         ''')
 
-    def test_old_theme_freed_active_texture_kept_and_expired_reloads(self):
+    def test_theme_textures_survive_idle_and_reopening(self):
         self.lua.execute('''
             local old=art:get('theme-ruby-background')
             now=10000;local active=art:get('theme-jade-background')
-            now=15000;Art.collect(now)
-            assert(not alive[old.texture] and alive[active.texture] and freed==1)
+            now=3600000
+            assert(alive[old.texture] and alive[active.texture] and freed==0)
             local reloaded=art:get('theme-ruby-background')
-            assert(reloaded.texture~=old.texture and created==3)
-            assert(art:get('theme-jade-background')==active and created==3)
+            assert(reloaded==old and created==2)
+            assert(art:get('theme-jade-background')==active and created==2)
         ''')
 
     def test_get_never_releases_draw_list_texture(self):
         self.lua.execute('''
             local first=art:get('hero');now=20000
             art:get('theme-jade-logo');assert(freed==0 and alive[first.texture])
-            Art.collect(now);assert(freed==1)
+            assert(art:get('hero')==first and freed==0 and created==2)
         ''')
 
-    def test_idle_cleanup_covers_separate_module_caches(self):
+    def test_shutdown_covers_separate_module_caches_once(self):
         self.lua.execute('''
             local other=Art.new(g,'resources',api)
             art:get('hero');other:get('observation')
-            now=15000;Art.collect(now);assert(freed==2 and next(alive)==nil)
-            art:get('hero');other:get('observation')
-            Art.shutdownAll();assert(freed==4 and next(alive)==nil)
-            art:shutdown();other:shutdown();assert(freed==4)
+            now=15000;assert(freed==0)
+            Art.shutdownAll();assert(freed==2 and next(alive)==nil)
+            Art.shutdownAll();art:shutdown();other:shutdown();assert(freed==2)
         ''')
 
-    def test_clock_wrap_and_failed_release_preserve_tracking(self):
+    def test_timer_no_longer_controls_texture_lifetime(self):
         self.lua.execute('''
             now=100000;local item=art:get('hero')
-            now=0;Art.collect(now);assert(freed==0)
-            now=15000;fail=true;Art.collect(now);assert(alive[item.texture])
-            fail=false;Art.collect(now);assert(freed==1)
+            now=0;assert(art:get('hero')==item and freed==0)
+            assert(Art.collect==nil)
         ''')
+        self.assertNotIn("service('art.lua').collect", module('runtime.lua'))
 
 
 class LegendBudgetTests(unittest.TestCase):
