@@ -92,8 +92,8 @@ class HotfixTests(unittest.TestCase):
         self.assertTrue(compile_code(CODE))
 
     def test_manifest_and_pack_integrity(self):
-        manifest = json.loads((ROOT / 'update/manifest.json').read_text())
-        release = ROOT / 'update' / manifest['packagePath']
+        manifest = json.loads((ROOT / 'update/live/manifest.json').read_text())
+        release = ROOT / 'update/live' / manifest['packagePath']
         for descriptor in (manifest['script'], manifest['assets']):
             payload = (release / descriptor['file']).read_bytes()
             self.assertEqual(len(payload), descriptor['bytes'])
@@ -160,7 +160,7 @@ class HotfixTests(unittest.TestCase):
         self.updates()
         self.run_lua("updater:update();drain();local count=#requests;updater:update();assert(reloads==2 and #requests==count)")
 
-    def test_update_registration_invokes_installer_without_opening_menu(self):
+    def test_update_registration_defers_and_coalesces_until_runtime_tick(self):
         runtime = self.lua.execute(module('runtime.lua'))
         self.lua.globals().Runtime = runtime
         # Exercise the real registration expression and real Runtime:register wrapper.
@@ -175,7 +175,55 @@ class HotfixTests(unittest.TestCase):
             function rt:call(m,fn,...)return fn(...)end
             function rt:open()error('Command must not open the broken GUI')end
         ''')
-        self.lua.execute('local self=rt;'+line+";registered.update();assert(called==1)")
+        self.lua.execute('local self=rt;'+line+''';
+            registered.update();registered.update();assert(called==0)
+            rt:processUpdateCommand();assert(called==1)
+            rt:processUpdateCommand();assert(called==1)
+            registered.update();rt.stopped=true
+            rt:processUpdateCommand();assert(called==1 and not rt.updateCommandPending)
+        ''')
+        self.assertIn('self.api.wait(0)\n            self:processUpdateCommand()', module('runtime.lua'))
+
+    def test_command_uses_checked_release_without_second_manifest_request(self):
+        self.updates()
+        self.run_lua('''
+            updater:start();drain();assert(#requests==1)
+            local checked=updater.pending
+            updater:update();assert(updater.state=='installing' and updater.pending==checked)
+            drain();assert(#requests==3 and reloads==1 and disk['game/X-TOOL.lua']==newCode)
+        ''')
+
+    def test_command_and_menu_install_make_the_same_requests_and_writes(self):
+        snapshots=[]
+        for action in ('update', 'install'):
+            self.updates()
+            self.run_lua('updater:start();drain();updater:'+action+'();drain()')
+            g=self.lua.globals()
+            snapshots.append((list(g.requests.values()), list(g.writes.values()), dict(g.disk.items()), g.reloads))
+        self.assertEqual(*snapshots)
+
+    def test_cached_release_still_rejects_corrupt_download(self):
+        self.updates()
+        self.run_lua('''
+            updater:start();drain();scenario='bad_code';updater:update();drain()
+            assert(updater.state=='error' and disk['game/X-TOOL.lua']==oldCode and reloads==0)
+        ''')
+
+    def test_hash_yields_with_real_sha_and_cancels_before_more_work(self):
+        self.lua.globals().Adapter = self.lua.execute(module('update_adapter.lua'))
+        self.lua.globals().sha = self.lua.execute(module('sha256.lua'))
+        self.run_lua('''
+            waits=0
+            local rt={api={io=io,os=os,wait=function()waits=waits+1 end},
+                storage={path=function()return 'release.ini' end},
+                service=function(_,name)assert(name=='sha256.lua');return sha end}
+            adapter=Adapter.new(rt)
+            local bytes=string.rep('x',200000)
+            assert(adapter.hash(bytes)==sha(bytes) and waits>=4)
+            adapter.cancel()
+            local ok,err=pcall(adapter.hash,bytes)
+            assert(not ok and tostring(err):find('stopped'))
+        ''')
 
     def dashboard(self, source=CODE):
         workspace = module('workspace.lua', source)
