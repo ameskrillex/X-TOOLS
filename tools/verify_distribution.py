@@ -25,7 +25,7 @@ for channel in ('update','update/live'):
   assert hashlib.sha256(data).hexdigest()==item['sha256'],item['path']
  if channel=='update':
   legacy[b'validate'](table(m),lambda b:hashlib.sha256(b).hexdigest().encode())
-  assert b'/update/live/manifest.json' in code and m['version']=='3.5.203'
+  assert b'/update/live/manifest.json' in code and m['version']=='3.5.205'
  else:
   assert (r/'X-TOOL.lua').read_bytes()==code
  print('Verified',channel,m['version'],len(m['assets']['files']),'resources')

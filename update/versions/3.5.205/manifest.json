@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "product": "CasualTool",
+  "version": "3.5.205",
+  "packagePath": "versions/3.5.205/",
+  "script": {
+    "file": "X-TOOL.lua",
+    "bytes": 40158,
+    "sha256": "c65868a48cd1f71f9ce2139d3657ad39fbc0245ed973eaf81e141038493065ab"
+  },
+  "assets": {
+    "id": "b574811553794a3aacdf58a434ea5f91061940839d835db74ea6dd8a6530deac",
+    "file": "assets.pack",
+    "bytes": 188906,
+    "sha256": "2bad1731c013df3e8f178ff260ce79bc2b6695a6a974a90ab5a610c67c44f789",
+    "files": [
+      {
+        "path": "assets/cacert.pem",
+        "offset": 6,
+        "bytes": 188900,
+        "sha256": "f66dff1bdf8f96060b8177976f8b7d9254bc89bc4db933d769f7384d28480bc9"
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
--- CasualTool release: 3.5.203
+-- CasualTool release: 3.5.205
 -- CasualTool assets: b574811553794a3aacdf58a434ea5f91061940839d835db74ea6dd8a6530deac
 local sources={}
 sources["updates.lua"] = function()
@@ -641,7 +641,7 @@ end
 
 script_name('X-Tools Update')
 script_author('Casual Alvarez')
-script_version('3.5.203')
+script_version('3.5.205')
 local updater
 function main()
     repeat wait(100) until isSampAvailable()
@@ -674,13 +674,27 @@ function main()
         end
     end
     local adapter=rt:service('update_adapter.lua').new(rt)
-    adapter.hash=function(bytes)return rt:service('sha256.lua')(bytes,wait)end
-    updater=rt:service('updates.lua').new(adapter,{version='3.5.203',path=host.path},
+    -- MoonLoader owns this main coroutine. Never yield from the SHA loop or
+    -- create nested MoonLoader jobs from the protected update transaction.
+    local pendingJob,reloadCallback
+    adapter.run=function(fn)assert(not pendingJob,'Update already queued');pendingJob=fn end
+    adapter.reload=function(finished)reloadCallback=finished;return 'pending'end
+    updater=rt:service('updates.lua').new(adapter,{version='3.5.205',path=host.path},
         {bundled=true,updateUrl='https://raw.githubusercontent.com/ameskrillex/X-TOOLS/main/update/live/manifest.json'})
     sampRegisterChatCommand('update',function()updater:update()end)
     rt:message('Переход на новый загрузчик. Сейчас автоматически установится актуальная версия X-Tools; настройки сохранятся. При ошибке повторите /update.')
     updater:update()
-    while true do wait(1000)end
+    while true do
+        wait(100)
+        if pendingJob then
+            local job=pendingJob;pendingJob=nil;job()
+        elseif reloadCallback then
+            local finished=reloadCallback;reloadCallback=nil
+            wait(500)
+            local ok,result=pcall(function()return host:reload()end)
+            finished(ok and result~=false,ok and 'Перезапуск отклонён' or result)
+        end
+    end
 end
 function onScriptTerminate(script)
     if script==thisScript() and updater then updater:stop()end
