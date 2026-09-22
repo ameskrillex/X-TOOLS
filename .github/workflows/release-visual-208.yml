@@ -1,0 +1,48 @@
+name: Build and publish window and Legends update 3.5.208
+on:
+  push:
+    branches: [codex/window-legends-3.5.208]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-3.5.208
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install LuaJIT test runtime
+        run: python -m pip install lupa==2.8
+      - name: Download immutable base archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v3.5.207 --pattern X-Tools.zip --dir base
+      - name: Build and verify full release
+        run: |
+          python tools/build_visual_release.py base/X-Tools.zip dist
+          python tests/test_visual_layout.py
+          python tests/test_family_questions.py
+          python tools/verify_distribution.py
+      - name: Publish verified distribution and prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v3.5.208 >/dev/null 2>&1; then
+            echo 'Release v3.5.208 already exists; refusing to replace it.'
+            exit 1
+          fi
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = d39c060570981d458d2f3d3b35517bc2fb3ed05f
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add X-TOOL.lua release-notes.md update/live/X-TOOL.lua update/live/assets.pack update/live/manifest.json update/live/versions/3.5.208
+          git commit -m 'Release 3.5.208: shared window size and adaptive Legends artwork'
+          git push origin HEAD:main
+          gh release create v3.5.208 dist/X-Tools.zip dist/X-TOOL.lua --target "$(git rev-parse HEAD)" --title 'X-Tools 3.5.208 — размер окна и Land of Legends' --notes-file release-notes.md --prerelease

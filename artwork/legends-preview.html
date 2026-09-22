@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><title>Land of Legends — темы 3.5.208</title>
+<style>
+*{box-sizing:border-box}body{margin:24px;background:#0b0a0f;color:#eee;font:14px "Segoe UI",sans-serif}h1{font-size:22px}p{color:#aaa}.grid{display:grid;grid-template-columns:repeat(2,minmax(230px,558px));gap:24px}h2{font-size:15px;font-weight:500}.banner{position:relative;aspect-ratio:3;min-height:94px;background:#15131b;overflow:hidden}.banner canvas{width:100%;height:100%;display:block}.copy{position:absolute;left:14px;top:14px;max-width:60%;font-size:12px;line-height:1.35}.title{display:block;margin-top:4px;font-size:17px;color:var(--accent)}@media(max-width:650px){.grid{grid-template-columns:1fr}}
+</style>
+<h1>Land of Legends · 3.5.208</h1><p>Проверка окраски и пропорций баннера. Цвета и умножение RGB соответствуют отрисовке ImGui.</p><div class="grid" id="grid"></div>
+<script>
+const themes=[['Классический','#C080FF'],['Аврора','#59DFFF'],['Янтарь','#FFAB51'],['Нефрит','#62E9AB'],['Рубин','#FF6086'],['Космос','#AA91FF']];
+const image=new Image();image.src='legends-3.5.208.png';image.onload=()=>{for(const [name,color] of themes){const section=document.createElement('section');section.style.setProperty('--accent',color);section.innerHTML=`<h2>${name}</h2><div class="banner"><canvas></canvas><div class="copy">Посети наш местный<span class="title">Land of Legends</span></div></div>`;grid.append(section);const canvas=section.querySelector('canvas');const ctx=canvas.getContext('2d');const render=()=>{canvas.width=Math.round(canvas.clientWidth*devicePixelRatio);canvas.height=Math.round(canvas.clientHeight*devicePixelRatio);const ratio=image.width/image.height;let u=1,v=1;const w=canvas.width,h=canvas.height;if(w/h>ratio)v=ratio*h/w;else u=w/(h*ratio);ctx.drawImage(image,(1-u)*image.width/2,(1-v)*image.height/2,u*image.width,v*image.height,0,0,w,h);ctx.globalCompositeOperation='multiply';ctx.fillStyle=color;ctx.fillRect(0,0,w,h);ctx.globalCompositeOperation='source-over';};new ResizeObserver(render).observe(canvas);render();}};
+</script></html>
