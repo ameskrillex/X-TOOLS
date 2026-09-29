@@ -27,5 +27,24 @@ for channel in ('update','update/live'):
   legacy[b'validate'](table(m),lambda b:hashlib.sha256(b).hexdigest().encode())
   assert b'/update/live/manifest.json' in code and m['version']=='3.5.205'
  else:
-  assert (r/'X-TOOL.lua').read_bytes()==code
+  manual=r/'release/manual.json'
+  if manual.exists():
+   entry=json.loads(manual.read_text(encoding='utf8'))
+   version=entry['version']
+   assert len(version.split('.'))==3 and all(p.isdigit() for p in version.split('.'))
+   folder=r/'release'/version
+   released=json.loads((folder/'manifest.json').read_text(encoding='utf8'))
+   assert released['version']==version
+   for key in ('script','assets'):
+    info=released[key];blob=(folder/info['file']).read_bytes()
+    assert len(blob)==info['bytes'] and hashlib.sha256(blob).hexdigest()==info['sha256']
+   script=(folder/'X-TOOL.lua').read_bytes();lua.compile(script)
+   assert (r/'X-TOOL.lua').read_bytes()==script
+   payload=(folder/'assets.pack').read_bytes()
+   for item in released['assets']['files']:
+    blob=payload[item['offset']:item['offset']+item['bytes']]
+    assert len(blob)==item['bytes'] and hashlib.sha256(blob).hexdigest()==item['sha256']
+   print('Verified manual release',version)
+  else:
+   assert (r/'X-TOOL.lua').read_bytes()==code
  print('Verified',channel,m['version'],len(m['assets']['files']),'resources')
