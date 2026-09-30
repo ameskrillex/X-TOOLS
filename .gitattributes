@@ -3,3 +3,4 @@ libraries/** -text
 update/** -text
 
 /X-TOOL.lua -text
+release/** -text
