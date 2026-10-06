@@ -1,0 +1,1094 @@
+{
+  "schema": 1,
+  "version": "3.5.305",
+  "source": "X-TOOL.lua",
+  "source_sha256": "daaac7a3ef6b86e28a1a7ddcf36f73d0c0a72f942d61ed19f8e095784065c068",
+  "scope": "Каталог обработчиков базового скрипта и статусы локальных CEF-адаптеров. Строки относятся к базовому SHA256. Экспериментальная сборка: artifacts/cef-family-dev/X-TOOL.lua; не опубликована.",
+  "dialog_contract": [
+    "semantic_type",
+    "transport",
+    "session",
+    "request_owner",
+    "request_id",
+    "target",
+    "native_id",
+    "style",
+    "title",
+    "rows",
+    "columns",
+    "raw_text",
+    "color_semantics",
+    "buttons",
+    "page",
+    "actions",
+    "visible",
+    "focused"
+  ],
+  "adapter_requirements": [
+    "Коррелировать ответ с владельцем, целью и сессией; сохранять таймауты и права.",
+    "Разделить закрытие визуального окна и отправку серверного ответа.",
+    "Сохранять исходные индексы строк, заголовки таблиц, цвета и направление пагинации.",
+    "Нормализовать CP1251/UTF-8 на границе; не удалять значимые цвета до разбора.",
+    "Не журналировать пароли, TOTP-коды и секреты.",
+    "Объединить проверки видимости и фокуса SA-MP/CEF: горячие клавиши и очереди сейчас проверяют sampIsDialogActive.",
+    "Неизвестные окна оставлять пользователю; не отвечать автоматически по одному ID."
+  ],
+  "entries": [
+    {
+      "key": "login",
+      "name": "Авторизация",
+      "category": "server",
+      "trigger": "Вход на сервер",
+      "recognition": "ID 1; заголовок Авторизация",
+      "required_data": "Заголовок, признак неверного пароля; секрет передаётся отдельно от каталога",
+      "response": "button=1, row=-1, input=пароль; скрыть окно при автовходе",
+      "ownership_and_limits": "Поддерживаемый сервер, включённый автовход, проверка зашифрованного значения; сброс прав сессии",
+      "source_lines": [
+        214,
+        41989
+      ],
+      "cef_status": "Отдельный мост сохранённого автовхода установлен ранее. Секреты не попадают в каталог."
+    },
+    {
+      "key": "totp",
+      "name": "Код приложения",
+      "category": "server",
+      "trigger": "Вход с двухфакторной проверкой",
+      "recognition": "ID 88; style 1; Код с приложения; Authenticator в тексте",
+      "required_data": "Имя текущего аккаунта, признак окна проверки; секрет и код не журналировать",
+      "response": "button=1, row=-1, input=одноразовый код",
+      "ownership_and_limits": "Одна попытка; привязка к аккаунту; секрет защищён Windows",
+      "source_lines": [
+        692,
+        703
+      ],
+      "cef_status": "Не исследован; соответствие CEF-событиям не установлено"
+    },
+    {
+      "key": "leaders",
+      "name": "Лидеры",
+      "category": "server",
+      "trigger": "/leaders",
+      "recognition": "ID 424; style 5; Лидеры в заголовке",
+      "required_data": "Табличные строки лидеров и организаций",
+      "response": "Обновление чекера; опциональное закрытие через 80 мс",
+      "ownership_and_limits": "Закрывать только распознанный ответ обновления",
+      "source_lines": [
+        7392,
+        7627
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "special_admins",
+      "name": "Администраторы S уровня",
+      "category": "server",
+      "trigger": "Обновление чекера: /leaders, /admins, /adms",
+      "recognition": "ID 0; style 5; Администраторы S уровня",
+      "required_data": "Строки ников и уровней",
+      "response": "Обновление списка; опциональное закрытие",
+      "ownership_and_limits": "Не считать ID 0 уникальным типом окна",
+      "source_lines": [
+        7313,
+        7627
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "account",
+      "name": "Данные аккаунта",
+      "category": "server",
+      "trigger": "/get, /admget",
+      "recognition": "Контекст запроса + признаки Номер аккаунта / № аккаунта / IP / Баны / Предупр",
+      "required_data": "Все строки аккаунта, ник, номер аккаунта, IP, наказания, время игры и AFK",
+      "response": "Разобрать в досье и скрыть штатное окно",
+      "ownership_and_limits": "Активный запрос; исключены ID 1,66,424. leader_online отдельно требует ID 0, style 0 и заголовок=ожидаемый ник",
+      "source_lines": [
+        24361,
+        24406,
+        25477,
+        4445
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется. Формат /get записан; /admget отложен."
+    },
+    {
+      "key": "offline_stats",
+      "name": "Оффлайн-статистика",
+      "category": "server",
+      "trigger": "/offst NICK",
+      "recognition": "Оффлайн статистика в заголовке либо набор полей опыта, Credits и организации/проживания/статуса",
+      "required_data": "Имя, Семья и остальные поля статистики",
+      "response": "Досье скрывает окно; семейный обработчик затем закрывает ID 0 ответом 0,0",
+      "ownership_and_limits": "Семейный запрос: ID 0, style 0, точный заголовок Оффлайн статистика игрока, совпадение имени и pending; досье имеет отдельный контекст",
+      "source_lines": [
+        24378,
+        24802,
+        18988,
+        19098
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "baninfo",
+      "name": "Проверка бана",
+      "category": "server",
+      "trigger": "/baninfo NICK",
+      "recognition": "Досье: Ник забаненного + Ник администратора + Дней до конца бана; защита бана: style 0, заголовок=цель",
+      "required_data": "Ник, администратор, оставшиеся дни, причина, IP; ответ об отсутствии бана",
+      "response": "Досье; защита перед баном скрывает и закрывает свой ответ",
+      "ownership_and_limits": "Сохранить очередь и корреляцию запроса; чужой/неоднозначный ответ не разрешает наказание",
+      "source_lines": [
+        24393,
+        24597,
+        33589,
+        33653
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "iplog",
+      "name": "История авторизаций",
+      "category": "server",
+      "trigger": "/iplog",
+      "recognition": "Авторизации … или Дата и время + IP адрес",
+      "required_data": "Строки авторизаций, даты, адреса",
+      "response": "Перенос в досье; скрытие окна",
+      "ownership_and_limits": "Активный запрос соответствующего вида и проверка прав",
+      "source_lines": [
+        24371,
+        24540
+      ],
+      "cef_status": "Отложен: нет записи CEF /iplog."
+    },
+    {
+      "key": "ip",
+      "name": "Поиск по IP",
+      "category": "server",
+      "trigger": "/ip",
+      "recognition": "Заголовок — валидный IP",
+      "required_data": "Адрес и строки найденных аккаунтов",
+      "response": "Перенос в досье; скрытие окна",
+      "ownership_and_limits": "Активный запрос соответствующего вида и проверка прав",
+      "source_lines": [
+        24446,
+        24460
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "lip",
+      "name": "Поиск по последнему IP",
+      "category": "server",
+      "trigger": "/lip",
+      "recognition": "Заголовок — валидный IP",
+      "required_data": "Адрес и строки найденных аккаунтов",
+      "response": "Перенос в досье; скрытие окна",
+      "ownership_and_limits": "Активный запрос соответствующего вида и проверка прав",
+      "source_lines": [
+        24449,
+        24460
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "log",
+      "name": "Логи аккаунта",
+      "category": "server",
+      "trigger": "/log",
+      "recognition": "Активный контекст log; исключены offst и iplog",
+      "required_data": "Полный текст серверного лога",
+      "response": "Перенос в досье; скрытие окна",
+      "ownership_and_limits": "Активный запрос соответствующего вида и проверка прав",
+      "source_lines": [
+        24452,
+        24586
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "history",
+      "name": "История ников",
+      "category": "server",
+      "trigger": "/history NICK",
+      "recognition": "Заголовок начинается с Прошлые имена / прошлые имена",
+      "required_data": "Цель, строки истории, кнопка 1 с >> для следующей страницы",
+      "response": "Следующая страница: button=1,row=0,input=\"\"",
+      "ownership_and_limits": "Только при загрузке history_preview; учитывать дедупликацию страниц и целевой аккаунт",
+      "source_lines": [
+        22772,
+        22809,
+        22866,
+        22927
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "capture_roster",
+      "name": "Белые/зелёные ники диалога 66",
+      "category": "server",
+      "trigger": "Включить сбор в тулсе, затем вручную открыть диалог 66; команда в этом обработчике не задана",
+      "recognition": "ID 66 и активный сбор",
+      "required_data": "Табличные ячейки ников С ЦВЕТОВЫМИ ТЕГАМИ, кнопка 2",
+      "response": "При >>: button=0,row=0,input=\"\", задержка 250 мс",
+      "ownership_and_limits": "Проверка сессии; белые добавляются, зелёные удаляются из исключений. Нельзя потерять семантику цвета в CEF",
+      "source_lines": [
+        13757,
+        13790,
+        13815,
+        17069
+      ],
+      "cef_status": "Не исследован; соответствие CEF-событиям не установлено"
+    },
+    {
+      "key": "family_menu",
+      "name": "Меню семьи",
+      "category": "server",
+      "trigger": "/family после /tempfamily либо проверка текущей семьи",
+      "recognition": "style 4; заголовок Семья",
+      "required_data": "Строки меню, точный индекс Участники семьи",
+      "response": "button=1,row=найденный индекс; выход button=0,row=-1",
+      "ownership_and_limits": "Автомат стадий сканирования; ID берётся из ответа",
+      "source_lines": [
+        3076,
+        19355,
+        19426
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "family_members",
+      "name": "Состав семьи",
+      "category": "server",
+      "trigger": "Семья → Участники семьи",
+      "recognition": "style 5; Список игроков в семье в заголовке",
+      "required_data": "Ники, заголовок таблицы, строка Далее >> или кнопка следующей страницы",
+      "response": "Строка Далее: button=1,row=index; иначе button=0,row=-1",
+      "ownership_and_limits": "Индекс без заголовка таблицы; максимум 100 страниц; повтор/неизвестная навигация не заменяют сохранённый состав",
+      "source_lines": [
+        3091,
+        19426
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "square_stats",
+      "name": "Итоги Квадрата",
+      "category": "server",
+      "trigger": "/fs после серверного объявления",
+      "recognition": "style 5/2/0; Статистика мероприятия «Квадрат» либо без кавычек",
+      "required_data": "Семьи и очки; победитель и очки из сообщения сервера",
+      "response": "Закрыть button=0,row=-1",
+      "ownership_and_limits": "Сверить победителя и очки; устаревшие итоги не включать",
+      "source_lines": [
+        37660
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "season_menu",
+      "name": "Сезоны",
+      "category": "server",
+      "trigger": "/season",
+      "recognition": "style 2; Сезоны",
+      "required_data": "Строка топа семей текущего сезона, индекс и подпись",
+      "response": "button=1,row=chosen,input=label; при отсутствии — закрытие",
+      "ownership_and_limits": "Ожидаемая стадия season; чужое окно завершает неполный сбор",
+      "source_lines": [
+        37666
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "family_top",
+      "name": "Топ семей",
+      "category": "server",
+      "trigger": "Выбор пункта /season",
+      "recognition": "style 0; Топ семей",
+      "required_data": "Названия семей и очки",
+      "response": "Закрыть button=0,row=-1",
+      "ownership_and_limits": "Ожидаемая стадия top",
+      "source_lines": [
+        37670
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "lego_list",
+      "name": "Список LEGO",
+      "category": "server",
+      "trigger": "/lego",
+      "recognition": "ID 688; style 4/5; lego в заголовке",
+      "required_data": "Строки локаций, автор, статус и прочие столбцы; страницы по кнопке 2",
+      "response": "Далее button=0,row=0; выбор button=1,row=исходный индекс",
+      "ownership_and_limits": "До 30 страниц; перед выбором сверить имя и автора; сохранять владение поздними ответами",
+      "source_lines": [
+        21340,
+        21388,
+        21423
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "lego_action",
+      "name": "Действия локации LEGO",
+      "category": "server",
+      "trigger": "Выбор локации",
+      "recognition": "В тексте Загрузить или убрать локацию и Удалить локацию; кнопка Выбрать",
+      "required_data": "Фактический ID окна и порядок действий",
+      "response": "button=1,row=выбранное действие; назад button=0,row=0",
+      "ownership_and_limits": "Только после собственного выбора; не придумывать индексы действий",
+      "source_lines": [
+        21428,
+        21492
+      ],
+      "cef_status": "Нет записи меню действий. Оставлено штатное окно CEF; адаптирован список и переход к выбору."
+    },
+    {
+      "key": "online_time",
+      "name": "Чистый онлайн",
+      "category": "server",
+      "trigger": "/c 60",
+      "recognition": "Текст содержит Вы позвонили в службу точного времени",
+      "required_data": "Дата сервера, Время в игре сегодня/вчера, AFK за сегодня/вчера",
+      "response": "Сохранить статистику; скрыть лишь собственный ответ",
+      "ownership_and_limits": "Уровень 2; окно ожидания 30 сек, identity и revision; ручной ответ наблюдать без скрытия",
+      "source_lines": [
+        31258,
+        31283,
+        33739
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется."
+    },
+    {
+      "key": "weapon_skills",
+      "name": "Навыки оружия",
+      "category": "server",
+      "trigger": "/askill",
+      "recognition": "style 0; Навыки владения оружием",
+      "required_data": "Две группы по 11 навыков; цель из ожидающего запроса",
+      "response": "Собственный ответ закрыть button=0,row=0; изменения отдельными /setskill",
+      "ownership_and_limits": "10 сек на ответ; revision; редактирование только своего аккаунта; данные не старше минуты",
+      "source_lines": [
+        32743,
+        32766,
+        32789
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется. Поддержан ответ только с базовыми навыками; отсутствующая группа не изменяется."
+    },
+    {
+      "key": "organization",
+      "name": "Состав организации",
+      "category": "server",
+      "trigger": "/find; в автоматическом обходе после /templeader",
+      "recognition": "ID 63; style 5; В организации N чел. (онлайн M)",
+      "required_data": "ID игроков, отметки На паузе, итоговые количества и страницы",
+      "response": "Следующая страница button=0,row=0,input=\"\"",
+      "ownership_and_limits": "organizationFindWaiting; дедупликация; исключение себя; таймаут обхода 15 сек",
+      "source_lines": [
+        33792,
+        44103,
+        44636
+      ],
+      "cef_status": "Подключён в локальной CEF-сборке; проверен на записях. Проверка новой сборки в игре ещё требуется. Учтены меню /find, «Все подразделения» и заголовок «В подразделении…»."
+    },
+    {
+      "key": "spectate_menu",
+      "name": "Меню наблюдения",
+      "category": "server_menu",
+      "trigger": "/sp и серверные INITMENU/SHOWMENU",
+      "recognition": "Не ShowDialog: меню с STAT, UPDATE, SLAP, MUTE, WEAP, SKICK, INFO",
+      "required_data": "ID меню, колонки, строки, доступность, исходные номера действий",
+      "response": "sampSendMenuSelect(row)",
+      "ownership_and_limits": "Кэш INITMENU; неизвестное меню остаётся штатным. Это отдельный протокол для CEF-адаптера",
+      "source_lines": [
+        29490,
+        29739,
+        29754
+      ],
+      "cef_status": "Не исследован; соответствие CEF-событиям не установлено"
+    },
+    {
+      "key": "casual",
+      "name": "Настройка автоматического выхода",
+      "category": "local",
+      "trigger": "/casual",
+      "recognition": "Локальный ID 28641; style 2",
+      "required_data": "Список ников и выключение",
+      "response": "onSendDialogResponse; сохранить настройку, не отправлять серверу",
+      "ownership_and_limits": "Локальное окно; не путать с CEF сервера",
+      "source_lines": [
+        17987,
+        17990
+      ],
+      "cef_status": "Не исследован; соответствие CEF-событиям не установлено"
+    },
+    {
+      "key": "multiban_confirm",
+      "name": "Подтверждение группового бана",
+      "category": "local",
+      "trigger": "Функция группового бана",
+      "recognition": "Локальный ID 713; style 0",
+      "required_data": "Цели, срок, причина и явное подтверждение пользователя",
+      "response": "sampHasDialogRespond(713)",
+      "ownership_and_limits": "Подтверждение должно остаться явным; не эмулировать согласие",
+      "source_lines": [
+        43033,
+        43774
+      ],
+      "cef_status": "Не исследован; соответствие CEF-событиям не установлено"
+    },
+    {
+      "key": "local_reports",
+      "name": "Отчёты организации и KillList",
+      "category": "local",
+      "trigger": "Отчёт обхода организаций / список смертей",
+      "recognition": "Локальный ID 700; style 0",
+      "required_data": "Сформированный тулсом текст",
+      "response": "Закрыть",
+      "ownership_and_limits": "Локальные отчёты; один ID для разных окон",
+      "source_lines": [
+        44271,
+        44754
+      ],
+      "cef_status": "Не исследован; соответствие CEF-событиям не установлено"
+    }
+  ],
+  "code_references": [
+    {
+      "line": 211,
+      "module": "access.lua",
+      "code": "if event == 'onShowDialog' then",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 692,
+      "module": "authenticator.lua",
+      "code": "function Auth:dialog(id,style,title,body)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 703,
+      "module": "authenticator.lua",
+      "code": "rt.api.sampSendDialogResponse(88,1,-1,code)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 763,
+      "module": "automatic_leader.lua",
+      "code": "if not a.sampIsLocalPlayerSpawned() or a.sampIsDialogActive() then self.ready=nil;return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 3076,
+      "module": "family_roster.lua",
+      "code": "function self:dialog(id,style,title,b1,b2,body)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 3148,
+      "module": "far_chat.lua",
+      "code": "local interactive=not preview and (a.sampIsChatInputActive()or a.sampIsDialogActive()or self.moving)",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 4445,
+      "module": "leader_online.lua",
+      "code": "function self:dialog(id,style,title,body)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 4490,
+      "module": "leader_online.lua",
+      "code": "if i.queryBusy('get') or a.sampIsDialogActive()then return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 5204,
+      "module": "modules/adm.lua",
+      "code": "if sampCloseCurrentDialogWithButton ~= nil then",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 5205,
+      "module": "modules/adm.lua",
+      "code": "sampCloseCurrentDialogWithButton(0)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 5206,
+      "module": "modules/adm.lua",
+      "code": "elseif sampCloseCurrentDialog ~= nil then",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 5207,
+      "module": "modules/adm.lua",
+      "code": "sampCloseCurrentDialog()",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 6476,
+      "module": "modules/adm.lua",
+      "code": "function sampev.onShowDialog(dialog_id, style, title, button1, button2, text)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 6477,
+      "module": "modules/adm.lua",
+      "code": "return sampOnShowDialog(dialog_id, style, title, button1, button2, text)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 7627,
+      "module": "modules/adm.lua",
+      "code": "function sampOnShowDialog(dialog_id, style, title, button1, button2, text)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 7628,
+      "module": "modules/adm.lua",
+      "code": "local onlineResult=leaderOnline:dialog(dialog_id,style,cp1251_to_utf8(title or ''),cp1251_to_utf8(text or ''))",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 7899,
+      "module": "modules/adminzone.lua",
+      "code": "elseif not latched and not pending and not sampIsChatInputActive() and not sampIsDialogActive() then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 12156,
+      "module": "modules/airbreak.lua",
+      "code": "local input=not integration.windowOpen() and isGameWindowForeground() and not isPauseMenuActive() and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsCursorActive()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 12789,
+      "module": "modules/broom.lua",
+      "code": "local input=not integration.windowOpen()and isGameWindowForeground()and not isPauseMenuActive()and not sampIsChatInputActive()and not sampIsDialogActive()and not sampIsCursorActive()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 13796,
+      "module": "modules/capture.lua",
+      "code": "sampSendDialogResponse(66, 0, 0, \"\")",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 17069,
+      "module": "modules/capture.lua",
+      "code": "function sampev.onShowDialog(dialogId, style, title, button1, button2, text)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 17987,
+      "module": "modules/casual.lua",
+      "code": "sampShowDialog(dialogId,u8:decode(title),u8:decode(body),u8:decode('Выбрать'),u8:decode('Закрыть'),2)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 17990,
+      "module": "modules/casual.lua",
+      "code": "function events.onSendDialogResponse(id,button,index)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 18078,
+      "module": "modules/chat_appearance.lua",
+      "code": "if (skipUntil and now<skipUntil)or sampIsDialogActive()or isPauseMenuActive()or not isGameWindowForeground()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 18231,
+      "module": "modules/chat_copy.lua",
+      "code": "if not cfg.main.enabled or not sampIsChatInputActive()or sampIsDialogActive()or isPauseMenuActive()or not isGameWindowForeground()or sampGetGamestate()~=3 then return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 18311,
+      "module": "modules/clickwarp.lua",
+      "code": "local input=not integration.windowOpen() and isGameWindowForeground() and not isPauseMenuActive() and not sampIsChatInputActive() and not sampIsDialogActive()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 18462,
+      "module": "modules/correction.lua",
+      "code": "if not isGameWindowForeground()or isPauseMenuActive()or sampIsDialogActive()then return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 18988,
+      "module": "modules/familia.lua",
+      "code": "function events.onShowDialog(id, style, title, b1, b2, text)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 19098,
+      "module": "modules/familia.lua",
+      "code": "sampSendDialogResponse(0, 0, 0, '')",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 19108,
+      "module": "modules/familia.lua",
+      "code": "elseif #queue > 0 and now() >= nextRequest and now()>=(queue[1].notBefore or 0) and not sampIsDialogActive() and not integration.queryBusy('offst') then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 19355,
+      "module": "modules/family_registry.lua",
+      "code": "dialogOpen=function()return sampIsDialogActive()end,",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 19357,
+      "module": "modules/family_registry.lua",
+      "code": "respond=function(id,b,row)return sampSendDialogResponse(id,b,row,'')end,",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 19375,
+      "module": "modules/family_registry.lua",
+      "code": "blocked=function()return scan.active or integration.queryBusy('family')or sampIsDialogActive()or sampIsChatInputActive()end,",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 19377,
+      "module": "modules/family_registry.lua",
+      "code": "respond=function(id,button,row,text)return sampSendDialogResponse(id,button,row,u8:decode(text or ''))end,",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 19388,
+      "module": "modules/family_registry.lua",
+      "code": "and not sampIsDialogActive()and not sampIsChatInputActive()and isGameWindowForeground()and not isPauseMenuActive()then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 19426,
+      "module": "modules/family_registry.lua",
+      "code": "function events.onShowDialog(id,style,title,b1,b2,body)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 19427,
+      "module": "modules/family_registry.lua",
+      "code": "if square:dialog(id,style,u8(title),u8(b1),u8(b2),u8(body))==false then return false end",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 19428,
+      "module": "modules/family_registry.lua",
+      "code": "return scan:dialog(id,style,u8(title),u8(b1),u8(b2),u8(body))",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 19949,
+      "module": "modules/glass_scoreboard.lua",
+      "code": "local function allowed()return sampGetGamestate()==3 and isGameWindowForeground()and not isPauseMenuActive()and not sampIsChatInputActive()and not sampIsDialogActive()end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 20305,
+      "module": "modules/invisible.lua",
+      "code": "and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsCursorActive() then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 21388,
+      "module": "modules/lego.lua",
+      "code": "later(function() state.deadline=getGameTimer()+5000;sampSendDialogResponse(ID,0,0,'') end)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 21423,
+      "module": "modules/lego.lua",
+      "code": "function events.onShowDialog(id,style,title,b1,b2,body)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 21459,
+      "module": "modules/lego.lua",
+      "code": "later(function() state.deadline=getGameTimer()+5000;sampSendDialogResponse(ID,1,target.index,'') end)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 21492,
+      "module": "modules/lego.lua",
+      "code": "sampSendDialogResponse(state.action.id,1,i-1,'')",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 21497,
+      "module": "modules/lego.lua",
+      "code": "sampSendDialogResponse(state.action.id,0,0,'');stop('Выберите локацию.');return",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 22947,
+      "module": "modules/lookup.lua",
+      "code": "sampSendDialogResponse(dialog.id, 1, 0, \"\")",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 26367,
+      "module": "modules/lookup.lua",
+      "code": "function sampev.onShowDialog(dialog_id, style, title, button1, button2, text)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 29435,
+      "module": "modules/menu.lua",
+      "code": "sampIsChatInputActive() or sampIsDialogActive() or sampIsScoreboardOpen()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 29490,
+      "module": "modules/menu.lua",
+      "code": "if sampSendMenuSelect then",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 29491,
+      "module": "modules/menu.lua",
+      "code": "sampSendMenuSelect(row)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 29739,
+      "module": "modules/menu.lua",
+      "code": "function sampev.onInitMenu(menu_id, menu_title, x, y, two_columns, columns, rows, menu_enabled)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 29754,
+      "module": "modules/menu.lua",
+      "code": "function sampev.onShowMenu(menu_id)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 29776,
+      "module": "modules/menu.lua",
+      "code": "function sampev.onHideMenu(menu_id)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 29834,
+      "module": "modules/menu.lua",
+      "code": "function sampev.onShowDialog(dialog_id, style, title, button1, button2, text)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 30358,
+      "module": "modules/menu.lua",
+      "code": "sampev.onShowMenu(definition[1])",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 30539,
+      "module": "modules/movement.lua",
+      "code": "and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsCursorActive()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 31005,
+      "module": "modules/observer_extras.lua",
+      "code": "local allow=usable() and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsCursorActive()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 31029,
+      "module": "modules/observer_extras.lua",
+      "code": "if sampIsChatInputActive() or sampIsDialogActive() or hud.edit==id then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 31263,
+      "module": "modules/online.lua",
+      "code": "if sampIsDialogActive() or integration.queryBusy('time') then status='Дождитесь закрытия текущего диалога.';return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 31283,
+      "module": "modules/online.lua",
+      "code": "function events.onShowDialog(id,style,title,button1,button2,text)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 32069,
+      "module": "modules/report_assist.lua",
+      "code": "if sampIsChatInputActive()or sampIsDialogActive()or isPauseMenuActive()or not isGameWindowForeground()then return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 32319,
+      "module": "modules/speed_boost.lua",
+      "code": "if not isGameWindowForeground() or isPauseMenuActive() or sampIsChatInputActive() or sampIsDialogActive() or sampIsCursorActive() then return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 32407,
+      "module": "modules/stopsbiv.lua",
+      "code": "and not sampIsDialogActive() and not isPauseMenuActive() and not sampIsScoreboardOpen()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 32661,
+      "module": "modules/tempfamily.lua",
+      "code": "elseif getGameTimer()>=paydayDue and sampIsLocalPlayerSpawned() and not sampIsDialogActive()then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 32668,
+      "module": "modules/tempfamily.lua",
+      "code": "or sampGetGamestate()~=3 or not sampIsLocalPlayerSpawned() or sampIsDialogActive()then readyAt=nil;return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 32766,
+      "module": "modules/weapon_skills.lua",
+      "code": "function events.onShowDialog(id,style,title,b1,b2,text)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 32789,
+      "module": "modules/weapon_skills.lua",
+      "code": "sampSendDialogResponse(id,0,0,'')",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 32795,
+      "module": "modules/weapon_skills.lua",
+      "code": "if getGameTimer()-lastSend<800 or sampIsDialogActive() then return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 33589,
+      "module": "offban_guard.lua",
+      "code": "if name=='onShowDialog' then",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 33653,
+      "module": "offban_guard.lua",
+      "code": "if p.dialogId and rt.api.sampSendDialogResponse then rt.api.sampSendDialogResponse(p.dialogId,0,0,'') end",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 33706,
+      "module": "offban_guard.lua",
+      "code": "if #self.queue==0 or rt.api.sampIsDialogActive() or (self.cooldown and now<self.cooldown) then return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 35122,
+      "module": "runtime.lua",
+      "code": "if name=='onHideMenu' and self.hidingServerMenu then return end",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 35132,
+      "module": "runtime.lua",
+      "code": "if name=='onInitMenu' then",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 35139,
+      "module": "runtime.lua",
+      "code": "if name=='onShowDialog' then",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 35200,
+      "module": "runtime.lua",
+      "code": "local fields=name=='onServerMessage' and {2} or name=='onShowDialog' and {3,6} or {}",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 35236,
+      "module": "runtime.lua",
+      "code": "'dialog='..read(self.api.sampIsDialogActive),'marker='..tostring(_G.cursorEnabled),",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 35323,
+      "module": "runtime.lua",
+      "code": "local dialog=type(api.sampIsDialogActive)=='function' and api.sampIsDialogActive()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 35371,
+      "module": "runtime.lua",
+      "code": "or api.sampIsDialogActive and api.sampIsDialogActive()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 35422,
+      "module": "runtime.lua",
+      "code": "or a.sampIsDialogActive and a.sampIsDialogActive()",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 36405,
+      "module": "runtime.lua",
+      "code": "if b and msg==0x101 and key==b.key and not self.api.sampIsChatInputActive() and not self.api.sampIsDialogActive()then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 36591,
+      "module": "runtime.lua",
+      "code": "if type(api.sampIsDialogActive)=='function' and api.sampIsDialogActive() then return end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 37660,
+      "module": "square_report.lua",
+      "code": "function self:dialog(id,style,title,b1,b2,body)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 41471,
+      "module": "core",
+      "code": "for _,event in ipairs({'onServerMessage','onShowDialog','onInitGame','onConnectionLost','onConnectionClosed','onInitMenu','onGamemodeRestart','onTogglePlayerControllable'}) do",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 41915,
+      "module": "core",
+      "code": "sampev.onShowDialog = sampOnShowDialog",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 41916,
+      "module": "core",
+      "code": "sampev.onInitMenu = sampevonInitMenu",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 41917,
+      "module": "core",
+      "code": "sampev.onShowMenu = sampevonShowMenu",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 41918,
+      "module": "core",
+      "code": "sampev.onHideMenu = sampevonHideMenu",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 42009,
+      "module": "core",
+      "code": "sampSendDialogResponse(id,1,-1,password)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 42518,
+      "module": "core",
+      "code": "if integrationRuntime.keys:pressed('reconnect') and not sampIsChatInputActive() and not sampIsDialogActive() then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 42527,
+      "module": "core",
+      "code": "elseif integrationRuntime.keys:pressed('reconnect') and not sampIsChatInputActive() and not sampIsDialogActive() then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 42539,
+      "module": "core",
+      "code": "and not sampIsChatInputActive() and not sampIsDialogActive(-1) then menu() end",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 42647,
+      "module": "core",
+      "code": "if integrationRuntime.keys:pressed('gm') and not sampIsChatInputActive() and not sampIsDialogActive() then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 42664,
+      "module": "core",
+      "code": "elseif integrationRuntime.keys:pressed('gm') and not sampIsChatInputActive() and not sampIsDialogActive() then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 42683,
+      "module": "core",
+      "code": "if integrationRuntime.keys:pressed('wh') and not sampIsChatInputActive() and not sampIsDialogActive() then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 42694,
+      "module": "core",
+      "code": "elseif integrationRuntime.keys:pressed('wh') and not sampIsChatInputActive() and not sampIsDialogActive() then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 42710,
+      "module": "core",
+      "code": "if integrationRuntime.keys:pressed('marker') and not warpOwns and not sampIsChatInputActive() and not sampIsDialogActive() and not show_main_window.v then",
+      "kind": "visibility_guard"
+    },
+    {
+      "line": 43033,
+      "module": "core",
+      "code": "local multiBanDialogResponded, multiBanDialogButton = sampHasDialogRespond(713)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 43774,
+      "module": "core",
+      "code": "sampShowDialog(713, cp1251(\"Подтверждение действия\"), dialogText, cp1251(\"Да\"), cp1251(\"Отмена\"), 0)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 44079,
+      "module": "core",
+      "code": "sampCloseCurrentDialogWithButton(1)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 44103,
+      "module": "core",
+      "code": "sampSendDialogResponse(63,0,0,\"\")",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 44271,
+      "module": "core",
+      "code": "sampShowDialog(700, dialogName, dialogText, cp1251(\"Закрыть\"), \"\", 0)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 44636,
+      "module": "core",
+      "code": "function sampOnShowDialog(dialogId, dialogStyle, dialogTitle, _, button2, dialogBody)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 44754,
+      "module": "core",
+      "code": "sampShowDialog(700, \"{ffcc00}KillList\", \"{FFFFFF}\" .. captureDeathsText, cp1251(\"Закрыть\"), \"\", 0)",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 46555,
+      "module": "core",
+      "code": "function sampevonInitMenu()",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 46559,
+      "module": "core",
+      "code": "function sampevonShowMenu()",
+      "kind": "dialog_or_menu_reference"
+    },
+    {
+      "line": 46563,
+      "module": "core",
+      "code": "function sampevonHideMenu()",
+      "kind": "dialog_or_menu_reference"
+    }
+  ]
+}

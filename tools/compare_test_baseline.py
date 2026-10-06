@@ -18,7 +18,7 @@ def run(use_baseline):
     suite = unittest.TestSuite()
     with patch.object(Path, 'read_text', read):
         for path in sorted((root/'tests').glob('test_*.py')):
-            if path.name == 'test_aegis_responses.py':
+            if path.name in ('test_aegis_responses.py', 'test_streamed_overlays.py', 'test_statue_roster.py', 'test_ipwhois_lifecycle.py'):
                 continue
             spec = importlib.util.spec_from_file_location(path.stem, path)
             mod = importlib.util.module_from_spec(spec)

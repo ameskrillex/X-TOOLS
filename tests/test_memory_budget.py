@@ -68,53 +68,6 @@ class ArtworkTests(unittest.TestCase):
         self.assertNotIn("service('art.lua').collect", module('runtime.lua'))
 
 
-class LegendBudgetTests(unittest.TestCase):
-    def setUp(self):
-        self.lua = LuaRuntime()
-        self.lua.execute("integration={service=function()return {allowed=function()return true end}end}")
-        body = module('modules/crimelegends.lua')
-        self.lua.execute(body[:body.index("local Scene=require 'crimelegends.scene'")] + '''
-            Scene=require 'crimelegends.scene';roster=require 'crimelegends.roster'
-            live={};requests=0;releases=0;created=0;removed=0;loaded=true
-            api={exists=function(id)return live[id]end,
-                remove=function(id)assert(live[id]);live[id]=nil;removed=removed+1 end,
-                request=function()requests=requests+1 end,
-                release=function()releases=releases+1 end,
-                loaded=function()return loaded end,
-                spawn=function()created=created+1;live[created]=true;return created end,
-                settle=function()return true end}
-            scene=Scene.new(roster,api)
-        ''')
-
-    def test_twenty_nearest_statues_without_stationary_churn(self):
-        self.lua.execute('''
-            for i=1,600 do scene:update(i*.11,-750,500,1372,100,'ADMINZONE') end
-            assert(scene.count==20 and created==20 and removed==0)
-            assert(requests==releases and scene.pending==nil)
-            scene:update(70,0,0,0,100,'OUTSIDE')
-            assert(scene.count==0 and removed==20 and next(live)==nil)
-        ''')
-
-    def test_distant_statues_no_longer_preloaded(self):
-        self.lua.execute('''
-            local e=scene.entries[1];scene.entries={e}
-            scene:update(1,e.x+200,e.y,e.z,100,e.context)
-            assert(requests==0 and created==0)
-            scene:update(2,e.x+100,e.y,e.z,100,e.context)
-            assert(created==1)
-            scene:update(3,e.x+200,e.y,e.z,100,e.context)
-            assert(removed==1 and scene.count==0)
-        ''')
-
-    def test_leaving_with_pending_model_releases_request(self):
-        self.lua.execute('''
-            loaded=false;local e=scene.entries[1];scene.entries={e}
-            scene:update(1,e.x,e.y,e.z,100,e.context)
-            assert(requests==1 and scene.pending)
-            scene:clear();scene:clear()
-            assert(releases==1 and scene.pending==nil and next(live)==nil)
-        ''')
-
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

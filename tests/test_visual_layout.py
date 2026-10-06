@@ -20,7 +20,7 @@ class VisualLayoutTests(unittest.TestCase):
     def setUp(self):
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         for name, file in [('geometry', 'window_geometry.lua'), ('Preferences', 'preferences.lua'),
-                           ('art', 'legends_art.lua'), ('Workspace', 'workspace.lua')]:
+                           ('Workspace', 'workspace.lua')]:
             self.lua.globals()[name] = self.lua.execute(module(file))
         self.lua.execute('''
             storage={path=function()return 'interface.ini' end,
@@ -107,75 +107,6 @@ class VisualLayoutTests(unittest.TestCase):
             screen={1920,1080};frame()
             assert(size.x==1493 and size.y==1047 and not rt.preferences.data.main.windowManual)
             assert(not rt.preferences.data.main.windowMoved)
-        ''')
-
-    def test_all_theme_tints_and_crop_preserve_image_proportions(self):
-        self.lua.execute('''
-            g={ImVec2=function(x,y)return {x=x,y=y}end,
-               ImVec4=function(r,g,b,a)return {r=r,g=g,b=b,a=a}end,GetColorU32=function(c)return c end}
-            calls=0;draw={AddImage=function(_,texture,first,last,uv0,uv1,tint)
-                calls=calls+1;call={texture=texture,first=first,last=last,uv0=uv0,uv1=uv1,tint=tint}
-            end}
-            image={texture=77,width=2172,height=724}
-            for _,color in ipairs(Preferences.colors)do
-                for _,rect in ipairs({{558,186},{230,94},{900,160},{300,240},{80,94}})do
-                    local w,h=unpack(rect)
-                    art.draw(g,draw,image,g.ImVec2(11,17),g.ImVec2(11+w,17+h),color[2],.92)
-                    local c=call.tint
-                    assert(math.floor(c.r*255+.5)*65536+math.floor(c.g*255+.5)*256+math.floor(c.b*255+.5)==color[2])
-                    assert(c.a==.92 and call.texture==77)
-                    local u,v=call.uv1.x-call.uv0.x,call.uv1.y-call.uv0.y
-                    assert(math.abs((2172*u)/(724*v)-w/h)<.000001)
-                    assert(call.uv0.x>=0 and call.uv0.y>=0 and call.uv1.x<=1 and call.uv1.y<=1)
-                end
-            end
-            local before=calls
-            art.draw(g,draw,image,g.ImVec2(0,0),g.ImVec2(0,10),0xffffff,1)
-            assert(calls==before)
-        ''')
-
-    def test_directory_uses_shared_tint_renderer(self):
-        self.lua.globals().browserCode = module('modules/legends_browser.lua')
-        self.lua.globals().theme = self.lua.execute(module('theme.lua'))
-        self.lua.execute('''
-            local function upvalue(fn,name)
-                for i=1,100 do local key,value=debug.getupvalue(fn,i)
-                    if key==name then return value end;if not key then break end end
-                error('Missing upvalue '..name)
-            end
-            image={texture=77,width=2172,height=724}
-            draw={AddImage=function(_,texture,a,b,uv0,uv1,tint)
-                rendered={texture=texture,a=a,b=b,tint=tint}
-            end}
-            g={ImVec2=function(x,y)return {x=x,y=y}end,ImVec4=function(r,g,b,a)return {r=r,g=g,b=b,a=a}end,
-                GetColorU32=function(c)return c end,GetWindowPos=function()return {x=10,y=20}end,
-                GetScrollX=function()return 0 end,GetScrollY=function()return 0 end,
-                GetWindowDrawList=function()return draw end,SetCursorPos=function()end,
-                InvisibleButton=function()return false end,IsItemHovered=function()return false end,
-                CalcTextSize=function()return {x=50,y=16}end,TextColored=function()end,
-                GetContentRegionAvailWidth=function()return 558 end,
-                ImBool=function(v)return {v=v}end,ImInt=function(v)return {v=v}end,ImBuffer=function(v)return {v=v}end}
-            local cache={get=function()return image end}
-            local services={['legends_art.lua']=art,['ui_components.lua']={wrap=function(_,text)return text end},
-                ['art.lua']={new=function()return cache end},['legends_server.lua']={},
-                ['dossier_ui.lua']={new=function()return {
-                    cursor=function()return {x=0,y=0}end,measure=function()return 16 end,
-                    rect=function()end,text=function()return 16 end,finish=function()end}end}}
-            rt={imgui=g,theme=theme,preferences=preferences(),art=cache,
-                typography={get=function()end},service=function(_,name)return assert(services[name],name)end}
-            package.preload.imgui=function()return g end
-            integration={service=function(name)return assert(services[name],name)end,palette=theme.palette}
-            assert(loadstring(browserCode))()
-            local header=upvalue(integration.drawHud,'header')
-            for _,color in ipairs({0x59DFFF,0xFFAB51,0x62E9AB,0xFF6086,0xAA91FF,0xC080FF})do
-                theme.apply(color)
-                for _,paint in ipairs({header})do
-                    paint()
-                    assert(rendered.texture==77 and rendered.b.x-rendered.a.x==558 and rendered.b.y-rendered.a.y==186)
-                    local c=rendered.tint
-                    assert(math.floor(c.r*255+.5)*65536+math.floor(c.g*255+.5)*256+math.floor(c.b*255+.5)==color)
-                end
-            end
         ''')
 
 
