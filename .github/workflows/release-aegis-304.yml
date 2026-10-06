@@ -1,0 +1,32 @@
+name: Verify and publish auto-issue replies 3.5.304
+on:
+  push:
+    branches: [main]
+    paths: ['update/current/versions/3.5.304/manifest.json']
+permissions:
+  contents: write
+concurrency:
+  group: release-3.5.304
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install lupa==2.8
+      - run: |
+          python tests/test_aegis_responses.py -v
+          python tools/compare_test_baseline.py
+          python tools/verify_distribution.py
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v3.5.304 >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to replace it.'
+            exit 1
+          fi
+          gh release create v3.5.304 X-TOOL.lua --target "$GITHUB_SHA" --title 'X-Tools 3.5.304 — автовыдача и ответы инициатору' --notes-file release-notes.md --prerelease
