@@ -43,26 +43,36 @@ function M.new(rt,dir)
   local now=a.os.time()
   if self.healthAt and now-self.healthAt<10 then return end
   self.healthAt=now
-  local f=a.io.open(dir..'/heartbeat.txt','rb')
-  local stamp=f and tonumber(f:read('*a'));if f then f:close()end
-  if stamp and math.abs(now-stamp)<15 then return end
-  if self.launchAt and now-self.launchAt<30 then return end
-  self.launchAt=now
-  local file=a.io.open(dir..'/launcher.json','rb');if not file then return end
-  local raw=file:read('*a');file:close()
-  local ok,c=pcall(a.decodeJson,raw);if not ok or type(c)~='table' then return end
-  if type(c.python)~='string'or type(c.script)~='string'or c.python:find('"',1,true)or c.script:find('"',1,true)then return end
-  local ffi=a.require('ffi')
-  pcall(ffi.cdef,[[int __stdcall MultiByteToWideChar(unsigned int,unsigned long,const char*,int,wchar_t*,int);
-   void* __stdcall ShellExecuteW(void*,const wchar_t*,const wchar_t*,const wchar_t*,const wchar_t*,int);]])
-  local kernel=ffi.load('kernel32');local shell=ffi.load('shell32')
-  local function wide(s)
-   local n=kernel.MultiByteToWideChar(65001,0,s,-1,nil,0)
-   if n<=0 then error('CEF launch path encoding')end
-   local w=ffi.new('wchar_t[?]',n);kernel.MultiByteToWideChar(65001,0,s,-1,w,n);return w
+  local ok,result=pcall(function()
+   if not self.native then
+    local ffi=a.require('ffi')
+    pcall(ffi.cdef,[[unsigned long __stdcall GetModuleFileNameW(void*,wchar_t*,unsigned long);
+     void* __stdcall LoadLibraryW(const wchar_t*);
+     void* __stdcall GetProcAddress(void*,const char*);]])
+    local kernel=ffi.load('kernel32')
+    local path=ffi.new('wchar_t[32768]')
+    local n=tonumber(kernel.GetModuleFileNameW(nil,path,32768))
+    if n==0 or n>=32740 then error('game path')end
+    local slash=n-1;while slash>=0 and path[slash]~=92 and path[slash]~=47 do slash=slash-1 end
+    if slash<0 then error('game directory')end
+    local name='XToolsBridge.asi'
+    for i=1,#name do path[slash+i]=name:byte(i)end
+    path[slash+#name+1]=0
+    local handle=kernel.LoadLibraryW(path);if handle==nil then error('XToolsBridge.asi missing')end
+    local start=kernel.GetProcAddress(handle,'XTBridgeStart')
+    local status=kernel.GetProcAddress(handle,'XTBridgeStatus')
+    if start==nil or status==nil then error('bridge exports')end
+    self.native={handle=handle,start=ffi.cast('int (__cdecl *)(void)',start),status=ffi.cast('int (__cdecl *)(void)',status)}
+   end
+   local status=tonumber(self.native.status())
+   if status~=1 and status~=2 then status=tonumber(self.native.start())end
+   return status
+  end)
+  local state=ok and tostring(result)or 'unavailable'
+  if self.nativeState~=state then
+   self.nativeState=state
+   if a.print then a.print('[CEF bridge] native status='..state..' (2=ready, -1=config, -3=port busy)')end
   end
-  local result=shell.ShellExecuteW(nil,wide('open'),wide(c.python),wide('"'..c.script..'"'),nil,0)
-  if a.print then a.print('[CEF bridge] helper launch result='..tonumber(ffi.cast('intptr_t',result)))end
  end
  function self:capture(enabled)
   local f=a.io.open(dir..'/capture.json','wb');if not f then return false end

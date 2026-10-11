@@ -2856,8 +2856,27 @@ return M
 local M={}
 -- MoonImGui does not expose the global background/overlay draw lists.
 function M.frame(g,width,height,body,windowId)
+ -- Conservative per-frame geometry budget for 16-bit MoonImGui indices.
+ local function bounded(draw)
+  local remaining=24000
+  local proxy={}
+  for _,name in ipairs({'AddLine','AddCircle','AddCircleFilled'})do
+   proxy[name]=function(_,a,b,c,d,e)
+    local segments=name=='AddLine'and 0 or math.max(3,math.min(64,tonumber(d)or 16))
+    local cost=name=='AddLine'and 16 or segments*8+32
+    if remaining<cost then return end
+    local function valid(p)return p and p.x==p.x and p.y==p.y and math.abs(p.x)<=width*4 and math.abs(p.y)<=height*4 end
+    if not valid(a)or(name=='AddLine'and not valid(b))then return end
+    remaining=remaining-cost
+    if name=='AddLine'then return draw:AddLine(a,b,c,d)end
+    if name=='AddCircle'then return draw:AddCircle(a,b,c,segments,e)end
+    return draw:AddCircleFilled(a,b,c,segments)
+   end
+  end
+  return proxy
+ end
  local getter=g.GetBackgroundDrawList or g.GetOverlayDrawList
- if getter then return body(getter()) end
+ if getter then return body(bounded(getter())) end
  local f=g.WindowFlags
  g.SetNextWindowPos(g.ImVec2(0,0),g.Cond.Always)
  g.SetNextWindowSize(g.ImVec2(width,height),g.Cond.Always)
@@ -2865,11 +2884,14 @@ function M.frame(g,width,height,body,windowId)
  g.PushStyleColor(g.Col.Border,g.ImVec4(0,0,0,0))
  local visible=g.Begin(windowId or '##xt_family_highlight',nil,f.NoTitleBar+f.NoResize+f.NoMove+f.NoScrollbar+f.NoSavedSettings+f.NoInputs+f.NoFocusOnAppearing+f.NoBringToFrontOnFocus)
  local ok,err=true,nil
- if visible then ok,err=pcall(function()body(g.GetWindowDrawList())end) end
+ if visible then ok,err=pcall(function()body(bounded(g.GetWindowDrawList()))end) end
  g.End();g.PopStyleColor(2)
  if not ok then error(err) end
 end
 function M.draw(g,points,color,style,drawList)
+ for _,p in pairs(points)do
+  if not p or p.x~=p.x or p.y~=p.y or math.abs(p.x)>100000 or math.abs(p.y)>100000 then return end
+ end
  local function distance(a,b)return math.sqrt((a.x-b.x)^2+(a.y-b.y)^2)end
  local torso=distance(points[3],points[1]);if torso<2 or torso>600 then return end
  local width=math.max(2,math.min(65,torso*0.3))
@@ -2883,7 +2905,7 @@ function M.draw(g,points,color,style,drawList)
   for _,pair in ipairs({{1,3},{3,4},{4,5},{4,22},{22,23},{23,24},{4,32},{32,33},{33,34},{1,41},{41,42},{42,43},{1,51},{51,52},{52,53}})do
    local a,b=points[pair[1]],points[pair[2]]
    if style==5 then
-    local length=distance(a,b);local count=math.max(1,math.ceil(length/8))
+    local length=distance(a,b);local count=math.max(1,math.min(32,math.ceil(length/8)))
     for i=0,count-1 do
      local t=i/count;local u=math.min(1,(i+0.55)/count)
      d:AddLine(g.ImVec2(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t),g.ImVec2(a.x+(b.x-a.x)*u,a.y+(b.y-a.y)*u),color,2)
@@ -3413,7 +3435,7 @@ Help.sections = {
         {'Защищённый список','В модуле «Автовыдача» нажмите «Перечитать списки», чтобы перечитать сохранённые сведения об администраторах и лидерах из чекера. Защита включена по умолчанию и действует также на ручные ban/warn. Её можно отключить общей галочкой в настройках автовыдачи; при включённой защите ручное исключение требует подтверждения фразой.'},
         {'Подтверждение и уровни','Запросы из /a принимаются с 3 уровня. Delete или кнопка «Выдать» подтверждает запрос, End отменяет; клавиши можно изменить. Отдельной выдачи без подтверждения нет. С 2 уровня доступны настройки обработки ручных наказаний: переключение онлайн/офлайн и уведомление игроку.'},
         {'Уровни наказаний','Jail, mute и kick — со 2 уровня; warn, ban, skick, offjail и offmute — с 3; sban, offwarn, offban и unban — с 4. Итоговая команда проверяется повторно, в том числе после переключения онлайн/офлайн. Настройка подписи запрашивающего администратора доступна с 3 уровня.'},
-        {'Запрос /tr через автовыдачу','По умолчанию после подтверждения выполняется: /sp за целью → 5 секунд → /tr → /slap → 3 секунды → выход из слежки. Во вкладке «Цепочки» выберите действие для каждого шага и паузу перед ним. Стрелки меняют порядок, крестик удаляет шаг. ID игрока подставляется автоматически. Для нестандартного действия выберите «Своя команда». Изменения применяются общей кнопкой «Сохранить». Если приём команды из /a выключен, редактор предложит его включить. Пустая цепочка выполняет исходную команду. Это отдельный сценарий от опции сопровождения ручного /tr.'},
+        {'Запрос /tr через автовыдачу','По умолчанию после подтверждения выполняется: /sp за целью → 5 секунд → /tr → /slap → 3 секунды → выход из слежки. Во вкладке «Цепочки» выберите действие для каждого шага и паузу перед ним. Стрелки меняют порядок, крестик удаляет шаг. ID игрока подставляется автоматически. Для нестандартного действия выберите «Своя команда». Изменения применяются общей кнопкой «Сохранить». Если приём команды из /a выключен, редактор предложит его включить. Пустая цепочка выполняет исходную команду. Это отдельный сценарий от опции сопровождения кнопки «Из воды» в меню действий. Обычный /tr ID не запускает /slap и /sp.'},
         {'Команды банд','GJ выдаёт jail со 2 уровня, GW/GB — warn/ban с 3. При недостаточных правах отправляется просьба через /a. При первом запуске команды /gw, /gb и /gj выключены. Включите их общей галочкой в «Гетто → Настройки». Выбранное состояние сохраняется после перезапуска. Перед отправкой проверьте игрока и срок наказания.'}
     },commands={
         {'/gw ID','Выдать предупреждение за нарушение правил капта.','Включите команды в «Гетто → Настройки». Игрок должен быть онлайн. Если цвет банды распознан, её тег добавляется к причине.'},
@@ -3535,7 +3557,7 @@ Help.sections = {
         
         
         {'Fast Connect','Работает автоматически с самого запуска X-Tools без переключателя. Патч применяется только при совпадении проверенной версии и байтов samp.dll.'},
-        {'После /tr','Основные инструменты → Настройки → Основные: опция «После /tr: подбросить игрока и обновить слежку». После перемещения отправляются /slap ID и /sp ID с интервалом 350 мс. При отключении или смене игрока очередь отменяется.'},
+        {'После «Из воды» в меню','Основные инструменты → Настройки → Основные: опция ««Из воды» в меню: подбросить игрока и обновить слежку». Только после кнопки «Из воды» отправляются /slap ID и /sp ID с интервалом 350 мс. Обычный /tr ID выполняет только перемещение. При отключении или смене игрока очередь отменяется.'},
         {'Конфликты клавиш','Нажмите сочетание, затем новую клавишу. Escape отменяет ввод. Если сочетание занято, перенос назначения требует отдельного нажатия; ошибка сохранения оставляет прежние клавиши.'},
         {'Временная семья','С 3 уровня: Основные инструменты → Функции → Лидерство и семья. Введите название и нажмите «Назначить». Последний выбор и история сохраняются. Автовступление возвращает в выбранную семью после подтверждённого сервером выхода из временной семьи; во время проверки реестра оно приостанавливается. Автоматический режим можно выключить.'},
         {'Локальная погода и время','Основные инструменты → Функции → Локальные время и погода. Снятие галочки возвращает серверное значение.'},
@@ -16709,18 +16731,9 @@ local function activateFollowPrompt(killerId, killerName)
     FOLLOW.prompt.killerName = killerName
     FOLLOW.prompt.expireAt = os.clock() + math.max(1, tonumber(INTS.followPromptSecondsBuffer.v) or 8)
 
-    local hotkeyText = formatHotkeyText(
-        tonumber(INTS.followHotkeyBuffer.v) or 0x48,
-        BOOLS.followUseCtrlBool.v,
-        BOOLS.followUseAltBool.v,
-        BOOLS.followUseShiftBool.v
-    )
-
-    chat(
-        COLORS.GOLD .. "Хотите следить за игроком? " ..
-        COLORS.WHITE .. colorizeName(killerId, killerName)
-    )
-    chat(COLORS.ACCENT .. "Нажмите " .. COLORS.WHITE .. hotkeyText .. COLORS.ACCENT .. ", чтобы начать слежку.")
+    local hotkeyText = integration.keys:name('capture_follow')
+    chat(COLORS.ACCENT .. "Следить за " .. colorizeName(killerId, killerName) ..
+        COLORS.ACCENT .. " — нажмите " .. COLORS.WHITE .. hotkeyText .. COLORS.ACCENT .. ".")
 end
 
 local function processFollowPrompt()
@@ -17232,7 +17245,7 @@ processPendingDeathEvents = function()
                 and STATE.capture.active
                 and boolValue(BOOLS.fragShowKillsBool, CFG.fraglist.show_kills_in_chat ~= false) then
                 chat(string.format(
-                    "%s - %s | оружие: %s",
+                    "%s {FFFFFF}убил %s {FFFFFF}| оружие: %s",
                     colorizeName(killerId, killerName),
                     colorizeName(killedId, victimName),
                     weaponName
@@ -17459,10 +17472,19 @@ handleGetFragsCommand = function(arg)
 end
 
 function buildCaptureTopOverlayEntries()
-    if not STATE.capture.active then
-        return {}
+    if STATE.capture.active then return DATA.captureTopOverlayEntries or {} end
+    if DATA.overlayTestActive then
+        -- Illustrative rows only: never add preview kills to capture statistics.
+        return {
+            {index=1,id=-1,nick="Предпросмотр: игрок 1",kills=12},
+            {index=2,id=-1,nick="Предпросмотр: игрок 2",kills=9},
+            {index=3,id=-1,nick="Предпросмотр: игрок 3",kills=7},
+            {index=4,id=-1,nick="Предпросмотр: игрок 4",kills=5},
+            {index=5,id=-1,nick="Предпросмотр: игрок 5",kills=3},
+            {index=6,id=-1,nick="Предпросмотр: игрок 6",kills=1}
+        }
     end
-    return DATA.captureTopOverlayEntries or {}
+    return {}
 end
 
 function drawCaptureTopOverlayHud()
@@ -29566,7 +29588,7 @@ local function do_custom_action(action)
         process_input(string.format('/freeze %d', target_id))
     elseif action == 'pull_from_water' then
         release_input_capture()
-        process_input(string.format('/tr %d', target_id))
+        integration.invoke('tr', tostring(target_id))
     elseif action == 'gethere' then
         release_input_capture()
         process_input(target_in_car and string.format('/gethere %d 1', target_id) or string.format('/gethere %d', target_id))
@@ -31578,9 +31600,11 @@ local function start()
             item.result='Ожидание подтверждения';state.waiting=item.command:match('^/%S+%s+(%S+)');state.command=item.label
             local targetId=tonumber(state.waiting)
             state.expectedTarget=targetId and sampIsPlayerConnected(targetId) and sampGetPlayerNickname(targetId) or state.waiting
-            local sent,sendError=pcall(sampSendChat,item.command)
+            -- Family aliases are local MoonLoader commands, not server commands.
+            local dispatch=({fj=true,fw=true,fb=true})[kind] and sampProcessChatInput or sampSendChat
+            local sent,sendError=pcall(dispatch,item.command)
             state.done=index
-            if not sent then
+            if not sent or sendError==false then
                 state.waiting=nil
                 mark(data,item,'X-Tools: ошибка отправки; результат не подтверждён')
                 stop('Ошибка отправки: '..tostring(sendError)); return
@@ -32156,8 +32180,19 @@ local function send_position(local_id,x,y,z)
 end
 
 local followupGeneration=0
-integration.onDisconnect=function() followupGeneration=followupGeneration+1 end
+local events=require 'samp.events'
+local function cancelFollowup() followupGeneration=followupGeneration+1 end
+integration.onDisconnect=cancelFollowup
+function events.onSendCommand(command)
+    if tostring(command):lower():match('^/sp%s') or tostring(command):lower()=='/sp' then cancelFollowup() end
+end
+-- Any server transition invalidates the previous action, even if the same
+-- player is selected again. Never reopen a session the user has just left.
+events.onTogglePlayerSpectating=cancelFollowup
+events.onSpectatePlayer=cancelFollowup
+events.onSpectateVehicle=cancelFollowup
 local function move_to_road(argument)
+    cancelFollowup()
     if not integration.access:require(3, tell) then return end
     local text = tostring(argument or ''):match('^%s*(%d+)%s*$')
     local target_id = text and tonumber(text)
@@ -32208,13 +32243,15 @@ local function move_to_road(argument)
     -- Preserve source ordering: one position update, then the server command.
     sampSendChat('/gethere '..target_id..' 1')
     integration.releaseSpectateInput()
+    -- Only the action menu requests follow-up here. Typed /tr stays standalone;
     -- Aegis already queues its own slap and observation refresh.
-    if integration.preferences.data.main.roadFollowup and integration.commandOwner()~='aegis' then
+    if integration.preferences.data.main.roadFollowup and integration.commandOwner()=='menu' then
         followupGeneration=followupGeneration+1
         local generation=followupGeneration
         local nickname=sampGetPlayerNickname(target_id)
         local function valid()
-            return generation==followupGeneration and integration.preferences.data.main.roadFollowup
+            local observed=integration.observation()
+            return observed and observed.id==target_id and generation==followupGeneration and integration.preferences.data.main.roadFollowup
                 and integration.access:can(1) and sampGetGamestate()==3
                 and sampIsPlayerConnected(target_id) and sampGetPlayerNickname(target_id)==nickname
         end
@@ -32855,7 +32892,31 @@ local function resetCrossings(id)
     unionTracker:reset(id)
     if id==nil then previousZones={};unionRegion=nil end
 end
-local model=integration.serverZones()
+local serverModel=integration.serverZones()
+local zoneClass=integration.service('zone_wall.lua')
+-- Gang-zone colors are ABGR. Ignore opacity; include the gang palette used
+-- by the server for both ownership and flashing attacker colors.
+local gangColors={ [0xFF00CC]=true,[0xCD00CD]=true,[0xFF00FF]=true,
+    [0x009900]=true,[0x00FF00]=true,[0x00CDFF]=true,[0x00FFFF]=true,
+    [0xFF6666]=true,[0xFFCC00]=true }
+local function gangColor(value)
+    value=tonumber(value)
+    return value and gangColors[value%16777216]==true
+end
+local filtered,filteredRevision={},-1
+local model=setmetatable({}, {__index=function(_,key)
+    if key=='revision' then return serverModel.revision end
+    if key=='zones' then
+        if filteredRevision~=serverModel.revision then
+            filtered={};filteredRevision=serverModel.revision
+            for id,z in pairs(serverModel.zones)do
+                if not gangColor(z.color) and not gangColor(z.flashColor)then filtered[id]=z end
+            end
+        end
+        return filtered
+    end
+    return zoneClass[key]
+end})
 local function currentRegion()
     local zones=model:activeZones();local changed=false
     for id,z in pairs(zones)do if previousZones[id]~=z then changed=true;break end end
@@ -33266,7 +33327,7 @@ integration.drawSettings=function()
             local flag=g.ImBool(c[row[1]])
             if g.Checkbox(row[2],flag)then c[row[1]]=flag.v;resetCrossings();save()end
         end
-        g.TextWrapped('Контролируется только активная мигающая зона капта. Обычные и невидимые территории не учитываются.')
+        g.TextWrapped('Только вне гетто: территории банд исключены из границ и предупреждений. Контролируется активная мигающая зона капта.')
         g.TextWrapped('Не вернулся за 5 секунд — отдельное предупреждение, один раз за выход. Если игрок вернулся, пропал из прорисовки или вышел из игры, ожидание отменяется.')
         g.TextWrapped('Отслеживаются другие игроки в прорисовке. Появление, исчезновение и выход из игры не считаются пересечением. Вход и выход работают независимо от видимости стенки.')
         g.TextWrapped('Стрельба: по полученным пакетам с указанным игроком-целью. Повтор для той же пары — раз в 3 секунды. Предупреждение требует проверки ситуации.')
@@ -34550,14 +34611,17 @@ return M
 -- Match a server punishment announcement, never a quoted chat line.
 local M={}
 local actions={ban={'забанил игрока','забанил оффлайн игрока'},offban={'забанил оффлайн игрока','забанил игрока'},
- jail={'посадил в тюрьму игрока','посадил в тюрьму','посадил игрока','посадил в КПЗ игрока'},
+ jail={'посадил в тюрьму игрока','посадил в тюрьму','посадил игрока','посадил в КПЗ игрока','посадил оффлайн игрока в тюрьму','посадил оффлайн игрока'},
  mute={'поставил затычку игроку','выдал затычку игроку'},warn={'выдал предупреждение игроку'},kick={'кикнул игрока'}}
 actions.offjail=actions.jail;actions.offmute=actions.mute;actions.offwarn=actions.warn
 local function trim(s)return (s:match('^%s*(.-)%s*$'))end
 function M.match(command,text,target,actor)
     local kind,_,args=command:match('^/(%S+)%s+(%S+)%s*(.*)$')
     if not kind or not target or not actor then return false end
-    kind=kind:lower();local verbs=actions[kind];if not verbs then return false end
+    kind=kind:lower()
+    local family=({fj='jail',fw='warn',fb='ban'})[kind]
+    kind=family or kind
+    local verbs=actions[kind];if not verbs then return false end
     text=trim(text:gsub('{%x%x%x%x%x%x}',''))
     local issuer,body=text:match('^%[A%]%s+([%w_]+)%[%d+%]%s+(.+)$')
     if not issuer then issuer,body=text:match('^Администратор%s+([%w_]+)%[%d+%]%s+(.+)$')end
@@ -34578,7 +34642,14 @@ function M.match(command,text,target,actor)
                     if kind~='offban' and amount and actual and tonumber(amount)~=tonumber(actual)then return false end
                 end
                 local reported=rest:match('[Пп]ричина:%s*(.+)$')
-                if reported and reason and trim(reported):gsub('[.]$','')~=trim(reason):gsub('[.]$','')then return false end
+                if reported and reason then
+                    reported=trim(reported):gsub('[.]$','')
+                    if family then
+                        local base=reported:match('^(.-)%s+%[[^%[%]]+%]$')
+                        if base then reported=trim(base)end
+                    end
+                    if reported~=trim(reason):gsub('[.]$','')then return false end
+                end
                 return true
             end
         end
@@ -37234,7 +37305,7 @@ return {
     {label="Уведомлять об обновлении данных по оружию",page="core",tab=1,section="Основные инструменты → Основные",source="core"},
     {label="Уведомлять об обновлении данных по перемещению",page="core",tab=1,section="Основные инструменты → Основные",source="core"},
     {label="Часовой пояс: смещение от МСК",page="core",tab=1,section="Основные инструменты",source="core"},
-    {label="После /tr: подбросить игрока и обновить слежку",page="core",tab=1,section="Основные инструменты",source="core"},
+    {label="«Из воды» в меню: подбросить игрока и обновить слежку",page="core",tab=1,section="Основные инструменты",source="core"},
     {label="Заменять /lego автоматически",page="core",tab=3,section="Основные инструменты",source="core"},
     {label="Общение в слежке через /n",page="core",tab=4,section="Основные инструменты",source="core"},
     {label="Горячие клавиши",page="core",tab=2,section="Основные инструменты",source="core"},
@@ -37449,7 +37520,7 @@ function M.draw(rt)
  g.SetNextWindowSize(g.ImVec2(math.min(720,sw-40),math.min(430,sh-40)),g.Cond.Appearing)
  if g.BeginPopupModal('Перенос настроек##settings_transfer',nil,g.WindowFlags.NoResize)then
   g.Text(state.mode=='export'and ('Код настроек · разделов: '..state.count)or 'Вставьте полученный код настроек')
-  g.TextWrapped(state.mode=='export'and 'Скопируйте код целиком. Экспортируются сохранённые настройки.'or 'Импорт заменит переданные настройки и перезапустит скрипт. Текущие настройки будут сохранены в резервную копию.')
+  g.TextWrapped(state.mode=='export'and 'Скопируйте код целиком. Экспортируются сохранённые настройки.'or 'Импорт подготовит настройки для следующего запуска. После сохранения полностью перезапустите игру. Прежние настройки будут сохранены в резервную копию.')
   if state.mode=='export'and state.exportFile then g.TextWrapped('Для передачи файлом: moonloader/X-TOOL/data/settings-export.txt')end
   g.InputTextMultiline('##settings_transfer_code',state.buffer,g.ImVec2(-1,math.min(200,sh*.27)),state.mode=='export'and (g.InputTextFlags.ReadOnly or 0)or 0)
   if state.mode=='export'then
@@ -37459,25 +37530,20 @@ function M.draw(rt)
     local value=rt.api.getClipboardText();assert(type(value)=='string'and #value<=524288,'Код слишком велик или буфер пуст');state.buffer.v=value
    end)end
    g.SameLine()
-   if not state.importing and g.Button('Применить и перезапустить')then
-    if attempt(function()
-     assert(type(rt.host.reload)=='function','Перезапуск недоступен')
-     rt.settingsTransfer:stage(state.buffer.v)
-    end)then
-     state.importing=true;state.status='Импорт подготовлен. Перезапуск…'
-     rt.api.lua_thread.create(function()
-      rt.api.wait(100)
-      local ok=attempt(function()
-       rt:prepareReload();rt.api.wait(0);rt:releaseReloadInput(rt.reloadOwnedInput)
-       assert(rt.host:reload()~=false,'Не удалось перезапустить скрипт')
-      end)
-      if not ok then rt.settingsTransfer:cancel();rt.reloading=false;state.importing=false;rt:syncGui()end
-     end)
+   if not state.importing and g.Button('Сохранить импорт')then
+    if attempt(function()rt.settingsTransfer:stage(state.buffer.v)end)then
+     state.importing=true
+     state.status='Импорт сохранён. Полностью закройте и снова запустите игру для применения настроек.'
+    end
+   end
+   if state.importing and g.Button('Отменить отложенный импорт')then
+    if attempt(function()assert(rt.settingsTransfer:cancel(),'Не удалось отменить импорт')end)then
+     state.importing=false;state.status='Отложенный импорт отменён.'
     end
    end
   end
   if state.status~=''then g.TextWrapped(state.status)end
-  if not state.importing and g.Button('Закрыть##settings_transfer')then g.CloseCurrentPopup()end
+  if g.Button('Закрыть##settings_transfer')then g.CloseCurrentPopup()end
   g.EndPopup()
  end
 end
@@ -40571,7 +40637,7 @@ local function drawModule(rt,callback,spec)
                 if rt.coreSettingsTab==1 then
                     rt.clock:draw(g)
                     local roadFollowup=g.ImBool(rt.preferences.data.main.roadFollowup==true)
-                    if g.Checkbox('После /tr: подбросить игрока и обновить слежку',roadFollowup) then rt.preferences.data.main.roadFollowup=roadFollowup.v;rt.preferences:save() end
+                    if g.Checkbox('«Из воды» в меню: подбросить игрока и обновить слежку',roadFollowup) then rt.preferences.data.main.roadFollowup=roadFollowup.v;rt.preferences:save() end
                     local streamer=g.ImBool(rt.preferences.data.main.streamer)
                     if g.Checkbox('Режим стримера: скрывать IP',streamer) then rt.preferences.data.main.streamer=streamer.v;rt.preferences:save() end
                     if g.CollapsingHeader('Чистый онлайн') then modulePage(rt,'online',false);modulePage(rt,'online',true) end

@@ -36,4 +36,26 @@ def transform(code):
         elseif os.clock() - state.started > 12 then state.finish(false, 'ipwho.is не ответил за 12 секунд') end""", """        if state.failed then state.finish(false,state.failed)
         elseif state.completed then state.finish(true)
         elseif os.time() - state.started >= 12 or os.time()<state.started then state.finish(false, 'ipwho.is не ответил за 12 секунд; нажмите «Обновить геоданные IP»') end""")
-    return code
+    from queue_family_fix import transform as fix_queue
+    code=fix_queue(code)
+    from capture_preview_fix import transform as fix_preview
+    code=fix_preview(code)
+    from capture_feed_fix import transform as fix_feed
+    code=fix_feed(code)
+    from pathlib import Path
+    marker='    sources["modules/zone_wall.lua"] = function()\n'
+    start=code.index(marker)+len(marker)
+    end=code.index('\n    end\n    sources[',start)
+    code=code[:start]+(Path(__file__).resolve().parents[1]/'libraries/zone_wall_module.lua').read_text('utf-8')+code[end:]
+    marker='    sources["modules/road.lua"] = function()\n'
+    start=code.index(marker)+len(marker)
+    end=code.index('\n    end\n    sources[',start)
+    code=code[:start]+(Path(__file__).resolve().parents[1]/'libraries/road.lua').read_text('utf-8')+code[end:]
+    marker='    sources["family_highlight.lua"] = function()\n'
+    start=code.index(marker)+len(marker)
+    end=code.index('\n    end\n    sources[',start)
+    code=code[:start]+(Path(__file__).resolve().parents[1]/'libraries/family_highlight.lua').read_text('utf-8')+code[end:]
+    marker='    sources["settings_transfer_ui.lua"] = function()\n'
+    start=code.index(marker)+len(marker)
+    end=code.index('\n    end\n    sources[',start)
+    return code[:start]+(Path(__file__).resolve().parents[1]/'libraries/settings_transfer_ui.lua').read_text('utf-8').rstrip()+ '\n'+code[end:]
