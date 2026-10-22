@@ -4,7 +4,7 @@ local function clean(s)
     return tostring(s or ''):gsub('{%x%x%x%x%x%x}',''):gsub('^%s*%[%d%d%.%d%d%.%d%d%d%d %d%d:%d%d:%d%d%]%s*',''):match('^%s*(.-)%s*$')
 end
 function M.normalize(command)
-    command=clean(command)
+    command=clean(command):gsub('^(/[%a]+)',string.lower)
     local kind,target,rest=command:match('^(/%a+)%s+(%S+)%s+(.+)$')
     if target and not target:match('^%d+$') then
         if kind=='/warn' then return '/offwarn '..target..' '..rest,true end
