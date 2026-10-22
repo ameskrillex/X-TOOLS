@@ -343,6 +343,25 @@ function Runtime:dispatch(name, ...)
     -- Native/launcher chat must not submit text intended for an X-Tools field.
     -- Explicit actions sent by our UI retain their normal guarded send path.
     if (name=='onSendChat' or name=='onSendCommand')and not self.outboundOwner and self:chatWindowOpen()then return false end
+    if name=='onSendChat' and self.powered~=false and not self.outboundOwner
+        and self.preferences.data.main.commandLayout then
+        local raw=(...)
+        if type(raw)=='string'and raw:sub(1,1)=='.' then
+            local converted=self:service('command_layout.lua').convert(raw)
+            if converted~=raw then
+                if self:checkSession()==false or not self:commandAllowed(converted)then return false end
+                local identity=self.access.identity
+                self.api.lua_thread.create(function()
+                    self.api.wait(0)
+                    if not self.stopped and self.powered~=false and self.access.identity==identity
+                        and not self:chatWindowOpen() and self:checkSession()~=false then
+                        self.api.sampProcessChatInput(converted)
+                    end
+                end)
+                return false
+            end
+        end
+    end
     if name=='onSendCommand' and self.powered~=false and not self.outboundOwner
         and self.preferences.data.main.commandLayout then
         local raw=(...)

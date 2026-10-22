@@ -59,7 +59,7 @@ integration.update=function()
     cjMovement:update(prefs.cjMovement==true)
     local matrixPressed=integration.keys:pressed('matrix_jump')
     local backPressed=integration.keys:pressed('back_flip')
-    if busy or integration.flightActive() or (not prefs.matrixJump and not prefs.backFlip) or not available() then return end
+    if busy or integration.observation() or integration.flightActive() or (not prefs.matrixJump and not prefs.backFlip) or not available() then return end
     if isCharPlayingAnim(PLAYER_PED,'CLIMB_JUMP') then return end
     if prefs.matrixJump and matrixPressed then run('matrix')
     elseif prefs.backFlip and backPressed then run('backflip') end
@@ -70,7 +70,7 @@ integration.prepareReload=function()keyPatch:stop();cjMovement:stop()end
 local settingsExpanded={}
 integration.drawSettings=function()
     local g=require('imgui')
-    for _,item in ipairs({{'commandLayout','Исправлять русскую раскладку команд /'},{'cjMovement','Походка и бег CJ'},{'blockF1F4','Блокировать F1, F4, F5 и F7'},{'antiBH','Баннихоп (AntiBH)'},{'matrixJump','Акробатический прыжок'},{'backFlip','Сальто назад'}}) do
+    for _,item in ipairs({{'commandLayout','Команды на русской раскладке: / и .'},{'cjMovement','Походка и бег CJ'},{'blockF1F4','Блокировать F1, F4, F5 и F7'},{'antiBH','Баннихоп (AntiBH)'},{'matrixJump','Акробатический прыжок'},{'backFlip','Сальто назад'}}) do
         local value=g.ImBool(integration.preferences.data.main[item[1]])
         if g.Checkbox(item[2],value) then integration.preferences.data.main[item[1]]=value.v;integration.preferences:save();cancel() end
         if item[1]=='matrixJump' or item[1]=='backFlip' then

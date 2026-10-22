@@ -156,10 +156,13 @@ integration.drawSettings=function()
     if g.Combo('Скорость##airbreak',mode,{'Медленно','Обычно','Быстро'})then cfg.main.mode=mode.v+1;integration.storage:saveIni(cfg,path)end
     local mouse=g.ImBool(cfg.main.mouse_turn==true)
     if g.Checkbox('Поворачивать за мышью##airbreak_mouse',mouse)then cfg.main.mouse_turn=mouse.v;mouseOffset=0;integration.storage:saveIni(cfg,path)end
-    if g.Button('Клавиши движения и скорости##airbreak_controls')then controlsExpanded=not controlsExpanded end
+    for _,action in ipairs({'up','down','slower','faster'})do integration.keys:draw(g,'airbreak_'..action)end
+    if g.Button('Остальные клавиши##airbreak_controls')then controlsExpanded=not controlsExpanded end
     if controlsExpanded then
         g.TextWrapped('Нажмите клавишу рядом с действием, чтобы изменить её. Назначения сохраняются сразу. Скорость меняется на один режим за нажатие.')
-        for _,c in ipairs(controls)do integration.keys:draw(g,'airbreak_'..c[1])end
+        for _,c in ipairs(controls)do
+            if c[1]~='up'and c[1]~='down'and c[1]~='slower'and c[1]~='faster'then integration.keys:draw(g,'airbreak_'..c[1])end
+        end
     end
     g.TextWrapped('Вверх: '..integration.keys:name('airbreak_up')..' · Вниз: '..integration.keys:name('airbreak_down')..' · Медленнее: '..integration.keys:name('airbreak_slower')..' · Быстрее: '..integration.keys:name('airbreak_faster'))
     
