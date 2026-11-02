@@ -3782,7 +3782,7 @@ function setup_aegis_ui()
         meta('Лидеры',snapshot and count(leaders) or state.known_leader_count)
         meta('Уникальных ников',snapshot and count(unique) or state.known_admin_count)
         imgui.TextWrapped(SETTINGS.block_known_admin_targets and 'Защита включена' or 'Защита администраторов и лидеров выключена, включая ban и warn.')
-        
+
         if imgui.Button('Перечитать списки') then refresh_protected_list() end
         if imgui.Button('Настроить списки в чекере') then integration.openSettings('adm') end
         imgui.Spacing()
@@ -4025,7 +4025,10 @@ end
 function sampev.onSendCommand(command)
 	touch_user_activity()
 
-	if state.bypass_outgoing_hook > 0 then
+	if state.bypass_outgoing_hook > 0
+        or (integration.commandOwner and integration.commandOwner() == 'aegis') then
+        -- Deferred ban preflight runs after bypass_outgoing_hook has been released.
+        -- Its /baninfo is still our own request, not a new manual command.
 		return
 	end
     -- An unrelated manual command makes a subsequent unlabelled error ambiguous.

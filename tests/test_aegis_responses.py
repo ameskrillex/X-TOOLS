@@ -173,3 +173,22 @@ class AegisResponsesTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+
+class DeferredBanResponsesTests(unittest.TestCase):
+    setUp = AegisResponsesTests.setUp
+    context = AegisResponsesTests.context
+    message = AegisResponsesTests.message
+    def test_deferred_preflight_preserves_requester(self):
+        aegis=module('modules/aegis.lua')
+        start=aegis.index('function sampev.onSendCommand(command)')
+        end=aegis.index('local command_text =',start)
+        self.lua.execute('function touch_user_activity()end; owner=nil; integration.commandOwner=function()return owner end')
+        self.lua.execute(aegis[start:end]+'end')
+        self.context('/offban','Lanell_Karpalov',admin_name='Leonardo_Swanson')
+        self.lua.execute("owner='aegis';sampev.onSendCommand('/baninfo Lanell_Karpalov')")
+        self.assertIsNotNone(self.lua.globals().state.awaiting_database_lookup_context)
+        self.assertEqual(self.message('Такого игрока нет в базе данных'),['/a Leonardo, такого игрока нет в базе данных.'])
+        self.assertIsNone(self.lua.globals().state.awaiting_database_lookup_context)
+        self.context('/offban')
+        self.lua.execute("owner=nil;sampev.onSendCommand('/get Other_Player')")
+        self.assertIsNone(self.lua.globals().state.awaiting_database_lookup_context)
