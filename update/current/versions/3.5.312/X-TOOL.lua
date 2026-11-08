@@ -26317,30 +26317,23 @@ local function compose_rows_dump(rows)
 end
 
 
+local accountOnlineCache,accountOnlineTick={},nil
 function get_online_player_id_for_account(account_label)
-    local normalized = normalize_identity(account_label)
-    if normalized == "" then
-        return nil
-    end
-
-    local local_found, local_player_id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-    if local_found and local_player_id ~= nil then
-        local local_nickname = strip_color_tags(cp1251_to_utf8(sampGetPlayerNickname(local_player_id) or ""))
-        if normalize_identity(local_nickname) == normalized then
-            return local_player_id
-        end
-    end
-
-    for player_id = 0, 1003 do
-        if (not local_player_id or player_id ~= local_player_id) and sampIsPlayerConnected(player_id) then
-            local nickname = strip_color_tags(cp1251_to_utf8(sampGetPlayerNickname(player_id) or ""))
-            if normalize_identity(nickname) == normalized then
-                return player_id
+    if sampGetGamestate()~=3 then accountOnlineCache={};accountOnlineTick=nil;return nil end
+    local now=getGameTimer()
+    if not accountOnlineTick or now<accountOnlineTick or now-accountOnlineTick>=1000 then
+        accountOnlineCache={};accountOnlineTick=now
+        local found,ownId=sampGetPlayerIdByCharHandle(PLAYER_PED)
+        for id=0,1003 do
+            if sampIsPlayerConnected(id) or found and id==ownId then
+                local nick=normalize_identity(strip_color_tags(cp1251_to_utf8(sampGetPlayerNickname(id) or '')))
+                if nick~='' then accountOnlineCache[nick]=id end
             end
         end
     end
-
-    return nil
+    local normalized=normalize_identity(account_label)
+    if normalized=='' then return nil end
+    return accountOnlineCache[normalized]
 end
 
 
@@ -26965,8 +26958,11 @@ function View.accountTable(targets,id,title,sourceRows,includeIp)
         end
         origin=origin or {text=account,account=account}
         local function choose()View.openPreview('account',account)end
+        local onlineId=get_online_player_id_for_account(account)
+        local accountText=includeIp and account or origin.text or account
+        if onlineId~=nil then accountText=accountText..'\nОнлайн · ID '..onlineId end
         local cells={
-            {text=includeIp and account or origin.text or account,tone=ban and ban.is_banned and not ban.pending and 'alert' or 'accent',click=choose},
+            {text=accountText,tone=onlineId~=nil and 'good' or ban and ban.is_banned and not ban.pending and 'alert' or 'accent',click=choose},
             {text=stat and (stat.pending and '…' or stat.level~='' and stat.level or '—')or '—'},
             {text=stat and (stat.pending and 'Проверяется…'or stat.organization~='' and stat.organization or stat.message~='' and stat.message or 'Не получена')or 'Не проверена'},
             {text=banText,tone=tone},
