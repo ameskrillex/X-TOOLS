@@ -23,6 +23,8 @@ class Activity(unittest.TestCase):
   self.l.execute("players={[253]='Target_Name'};api.sampIsPlayerConnected=function(id)return players[id]~=nil end;api.sampGetPlayerNickname=function(id)return players[id]end;o:observe('Admin_Name[7] (4 lvl) > /sp 253');assert(o:label('Admin_Name',7)=='{9299A6}| {68CFFF}sp -> Target_Name [253]');players[253]='Other_Name';assert(o:label('Admin_Name',7)=='{9299A6}| {68CFFF}sp -> [253]')")
  def test_no_online_and_compact_badges(self):
   self.l.execute("o:observe('Admin_Name[7] (4 lvl) Voice');assert(o:label('Admin_Name',7)=='');o:observe('Admin_Name[7] (4 lvl) AFK (невидимка) > /sp 253');assert(o:label('Admin_Name',7)=='{FF5964}[AFK] {C69CFF}[INV] {9299A6}| {68CFFF}sp -> [253]')")
+ def test_head_admin_before_players_from_chatlog(self):
+  self.l.execute("now=15000;o:update();assert(o:observe('Админы онлайн:')==false);assert(o:observe('Гл. администратор{FF0000} AFK')==false);assert(o:observe('Stan_Lamare[65] (4 lvl) {9999ff}Voice{FF0000} AFK')==false);assert(o:observe('Barbara_Cassini[184] (4 lvl) {9999ff}Voice{00CC33} > /sp 281')==false);assert(o:observe('Mia_Granados[261] (3 lvl)')==false);assert(o:label('Stan_Lamare',65)=='{FF5964}[AFK]');assert(o:observe('[A] Other_Admin[5]: hello')==nil);now=17000;o:update();assert(o.pending==nil);o:manual('/admins');assert(o:observe('Админы онлайн:')==nil);assert(o:observe('Гл. администратор AFK')==nil);assert(o:observe('Mia_Granados[261] (3 lvl)')==nil)")
  def test_compile(self):
   self.l.execute('assert(loadstring(...))',code)
 if __name__=='__main__':unittest.main()
