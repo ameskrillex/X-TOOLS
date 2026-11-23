@@ -1,18 +1,18 @@
 {
   "schema": 1,
   "product": "CasualTool",
-  "version": "3.5.332",
-  "packagePath": "versions/3.5.332/",
+  "version": "3.5.345",
+  "packagePath": "versions/3.5.345/",
   "script": {
     "file": "X-TOOL.lua",
-    "bytes": 2285137,
-    "sha256": "12b88d868add63f4db953968742fa3e9fa15bfbb5c9f5285685f5f01067a0683"
+    "bytes": 2356375,
+    "sha256": "3527afce29eac7e92633f72b6db53ec35ff72bfd67c64f0bdfb02011f6e568fc"
   },
   "assets": {
-    "id": "3b611b047f4d489b7a4149c23eaf16c3e3f52b26150a6e296adbb8de77fd42d3",
+    "id": "39808628321cf6083705e52251d8b7fa2ff9cfa16d27e4dcfbeae3b00aa52889",
     "file": "assets.pack",
-    "bytes": 83608554,
-    "sha256": "42fb676f380ccee2d2234a88968a76dce2ab06e6b2f0f31093351e0dbeaf14c0",
+    "bytes": 83635112,
+    "sha256": "92a22d5d6ca0fa0c12f1d865263034595589b009ebac9477be6325224cfff29d",
     "files": [
       {
         "path": "art/adminzone-button.png",
@@ -2245,6 +2245,12 @@
         "offset": 83513322,
         "bytes": 95232,
         "sha256": "cef5159964d28a98a4b850447c1b85db71b3c26b9cfb1f875a9b4daea88cedc8"
+      },
+      {
+        "path": "art/scoreboard-logo.png",
+        "offset": 83608554,
+        "bytes": 26558,
+        "sha256": "f01076924f387a21dba7605072e5f2a68c557e9caa98abc33c30bc624a092cd8"
       }
     ]
   }
