@@ -23,3 +23,5 @@
 ## Статус
 
 Тестовые сборки. Офлайн-проверки не заменяют проверку в GTA SA. [Описание последнего выпуска](release-notes.md).
+
+**[Скачать загрузчик библиотек X-Tools](https://raw.githubusercontent.com/ameskrillex/X-TOOLS/main/X-Tools-Libraries.lua)** — положите файл в папку moonloader.

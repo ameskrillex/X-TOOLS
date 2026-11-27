@@ -1,0 +1,16 @@
+name: Check library loader
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify installer and bundled dependencies
+        run: |
+          test -s X-Tools-Libraries.lua
+          python3 - <<'PY'
+          import pathlib, re
+          text = pathlib.Path('X-Tools-Libraries.lua').read_text(encoding='utf-8')
+          paths = re.findall(r'https://raw[.]githubusercontent[.]com/ameskrillex/X-TOOLS/main/(libraries/[^"]+[.]pack)', text)
+          assert paths and all(pathlib.Path(path).is_file() for path in paths)
+          PY
